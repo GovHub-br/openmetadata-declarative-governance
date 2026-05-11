@@ -1,0 +1,13 @@
+# Dominios de negocio/governanca.
+# OpenMetadata aceita varios owners usuarios, mas apenas um owner time.
+
+domains:
+  - nome: orcamento_publico
+    nome_exibicao: Orcamento Publico
+    tipo_dominio: Aggregate
+    descricao: Dados e produtos relacionados a execucao orcamentaria.
+    proprietarios:
+      - team:mgi-data-engineering
+    especialistas:
+      - user:arthuralves1538
+

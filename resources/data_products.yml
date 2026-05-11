@@ -1,0 +1,11 @@
+# Produtos de dados.
+# Quando inherit_from_domain=true, owners e experts sao herdados do dominio se
+# nao forem definidos explicitamente aqui.
+
+data_products:
+  - nome: execucao_orcamentaria
+    nome_exibicao: Execucao Orcamentaria
+    descricao: Produto de dados de acompanhamento da execucao orcamentaria.
+    dominio: orcamento_publico
+    inherit_from_domain: true
+

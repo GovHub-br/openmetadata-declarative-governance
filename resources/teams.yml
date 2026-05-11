@@ -1,0 +1,13 @@
+# Times envolvidos nos dominios e produtos de dados.
+
+times:
+  - nome: mgi
+    nome_exibicao: mgi-data-engineering
+    email: dados-orcamento@example.org
+    equipe_publica: true
+    descricao: Time responsavel por dados de orcamento.
+    dominios:
+      - orcamento_publico
+    proprietarios:
+      - user:arthuralves1538
+
