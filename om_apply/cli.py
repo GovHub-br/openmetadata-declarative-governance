@@ -61,6 +61,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
 
     try:
+        resource_path = Path(args.file)
+        if not resource_path.exists():
+            raise ValueError(
+                f"Arquivo/diretorio de resources nao encontrado: {args.file}. "
+                "Monte a pasta no container com -v ...:/data/resources:ro "
+                "ou use sh openmetadata_script/run.sh."
+            )
         config = read_config(args.file)
         if args.validate_only:
             validate_config_rules(config)

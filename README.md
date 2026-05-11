@@ -1,26 +1,29 @@
 # OpenMetadata Declarativo
 
-Este projeto aplica uma configuração declarativa de governança no OpenMetadata, permitindo recriar e manter domínios, times, usuários e produtos de dados sem depender de operações manuais na UI.
+Este projeto aplica uma configuração declarativa de governança no OpenMetadata, permitindo recriar e manter domínios, personas, times, usuários e produtos de dados sem depender de operações manuais na UI.
 
 Reconciler simples para aplicar recursos de governanca no OpenMetadata a partir
-de YAML. A ideia e manter usuarios, times, dominios e produtos de dados como
-configuracao versionavel, com comportamento de create/update.
+de YAML. A ideia e manter usuarios, personas, times, dominios e produtos de dados
+como configuracao versionavel, com comportamento de create/update.
 
 ## O que ele gerencia
 
 - `domains`: dominios do OpenMetadata.
+- `personas`: perfis/personas do OpenMetadata.
 - `times` / `teams`: times e seus dominios.
 - `users`: usuarios, times, personas e senha inicial/reset.
 - `data_products`: produtos de dados associados a dominios.
 
 O fluxo respeita dependencias entre recursos:
 
-1. cria/atualiza dominios sem referencias;
-2. cria/atualiza times sem owners;
-3. cria/atualiza usuarios;
-4. atualiza dominios com owners e experts;
-5. atualiza times com owners;
-6. cria/atualiza produtos de dados.
+1. cria/atualiza dominios sem owners/experts;
+2. cria/atualiza personas sem owners;
+3. cria/atualiza times sem owners;
+4. cria/atualiza usuarios;
+5. atualiza dominios com owners e experts;
+6. atualiza personas com owners;
+7. atualiza times com owners;
+8. cria/atualiza produtos de dados.
 
 Entidades existentes sao atualizadas com `PATCH`/JSON Patch. Entidades novas
 sao criadas pelos endpoints de criacao/create-or-update da API.
@@ -44,6 +47,7 @@ openmetadata_script/
     validation.py
   resources/
     domains.yml
+    personas.yml
     teams.yml
     users.yml
     data_products.yml
@@ -51,7 +55,7 @@ openmetadata_script/
 
 ## Configuracao
 
-Crie ou edite `openmetadata_script/.env`:
+Crie ou edite `.env`:
 
 ```bash
 OM_HOST=https://openmetadata.clusterlab.lappis.rocks
@@ -68,24 +72,25 @@ password: "${USER_MATEUS_PASSWORD:-Senha@123}"
 
 ## Uso recomendado
 
-O atalho abaixo faz build da imagem e monta a pasta `resources/` local como
-volume. Assim, se voce editar YAML, nao precisa lembrar de rebuildar a imagem
-manualmente:
+A forma recomendada e dar permissao de execucao ao script uma vez e rodar por
+ele. O script faz build da imagem e monta a pasta `resources/` local como volume.
+Assim, se voce editar YAML, nao precisa lembrar de rebuildar a imagem manualmente:
 
 ```bash
-sh openmetadata_script/run.sh
+chmod +x run.sh
+./run.sh
 ```
 
 Dry-run:
 
 ```bash
-sh openmetadata_script/run.sh --dry-run
+./run.sh --dry-run
 ```
 
 Validar somente o template, sem chamar a API:
 
 ```bash
-sh openmetadata_script/run.sh --validate-only
+./run.sh --validate-only
 ```
 
 ## Docker manual
@@ -100,8 +105,8 @@ Aplicar a pasta modular local:
 
 ```bash
 docker run --rm \
-  --env-file openmetadata_script/.env \
-  -v "$PWD/openmetadata_script/resources:/data/resources:ro" \
+  --env-file .env \
+  -v "$PWD/resources:/data/resources:ro" \
   openmetadata-apply \
   --file /data/resources
 ```
@@ -110,20 +115,21 @@ Aplicar um arquivo unico, caso voce prefira esse formato:
 
 ```bash
 docker run --rm \
-  --env-file openmetadata_script/.env \
-  -v "$PWD/openmetadata_script/resources.yml:/data/resources.yml:ro" \
+  --env-file .env \
+  -v "$PWD/resources.yml:/data/resources.yml:ro" \
   openmetadata-apply \
   --file /data/resources.yml
 ```
 
-Usar o YAML empacotado na imagem:
+Evite rodar sem montar os resources:
 
 ```bash
-docker run --rm --env-file openmetadata_script/.env openmetadata-apply
+docker run --rm --env-file .env openmetadata-apply
 ```
 
-Esse ultimo comando so enxerga alteracoes em YAML depois de um novo
-`docker build`, porque os arquivos ficam copiados dentro da imagem.
+Esse comando nao monta os YAMLs locais e deve falhar com uma mensagem orientando
+a usar volume ou `run.sh`. Isso evita aplicar um arquivo antigo copiado para a
+imagem em algum build anterior.
 
 ## Auditoria de erros
 
@@ -137,13 +143,13 @@ container, o caminho e:
 Para persistir o log localmente:
 
 ```bash
-mkdir -p openmetadata_script/logs
+mkdir -p logs
 
 docker run --rm \
-  --env-file openmetadata_script/.env \
+  --env-file .env \
   -e OM_AUDIT_LOG=/logs/audit.jsonl \
-  -v "$PWD/openmetadata_script/logs:/logs" \
-  -v "$PWD/openmetadata_script/resources:/data/resources:ro" \
+  -v "$PWD/logs:/logs" \
+  -v "$PWD/resources:/data/resources:ro" \
   openmetadata-apply \
   --file /data/resources
 ```
@@ -160,6 +166,7 @@ O `--validate-only` checa regras que ja conhecemos da instancia dev:
 - para multiplos owners, use owners do tipo `user`;
 - `users` aceita apenas um dominio; se houver mais de um, o script usa o
   primeiro e emite aviso;
+- `personas` podem declarar `dominios` e `proprietarios`;
 - referencias podem ser feitas por `name`, FQN ou `displayName`.
 
 ## Referencias
@@ -180,7 +187,9 @@ Quando o tipo e omitido, o script assume:
 - owner de dominio/produto: `team`;
 - expert: `user`;
 - owner de time: `user`;
-- itens de `times` em usuario: `team`.
+- owner de persona: `user`;
+- itens de `times` em usuario: `team`;
+- itens de `personas` em usuario: `persona`.
 
 ## Campos mais usados
 
@@ -197,6 +206,7 @@ As chaves podem ser em portugues ou no formato da API:
 - `times` / `teams`
 - `senha` / `password`
 - `confirmar_senha` / `confirmPassword`
+- `padrao` / `default`
 
 ## Desenvolvimento
 
@@ -204,8 +214,8 @@ Validar sintaxe Python:
 
 ```bash
 python3 -m py_compile \
-  openmetadata_script/om_apply.py \
-  openmetadata_script/om_apply/*.py
+  om_apply.py \
+  om_apply/*.py
 ```
 
 Rodar localmente sem Docker:
@@ -214,7 +224,7 @@ Rodar localmente sem Docker:
 export OM_HOST="https://openmetadata.clusterlab.lappis.rocks"
 export OM_TOKEN="seu-token"
 
-python3 openmetadata_script/om_apply.py \
-  --file openmetadata_script/resources \
+python3 om_apply.py \
+  --file resources \
   --dry-run
 ```
