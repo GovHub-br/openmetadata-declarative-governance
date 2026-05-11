@@ -1,13 +1,6 @@
 # Usuarios OpenMetadata.
 #
-# Personas disponiveis no dev no momento:
-# - data-scientist
-# - data-engineer
-# - data-governance-specialist
-# - dataops-specialist
-# - data-security-specialist
-# - Engenheiro(a) de IA
-#
+# Personas ficam versionadas em resources/personas.yml.
 # Para dados sensiveis, prefira variaveis de ambiente:
 # password: "${USER_PASSWORD:-Senha@123}"
 
@@ -22,12 +15,12 @@ users:
     personas:
       - data-security-specialist
 
-  - nome: mateuscastro
-    nome_exibicao: Mateus Castro
-    email: mateuscastro123baar@gmail.com
-    password: "${USER_MATEUS_PASSWORD:-Senha@123}"
-    times:
-      - ipea-data-engineering
-    personas:
-      - data-security-specialist
+  # - nome: mateuscastro
+  #   nome_exibicao: Mateus Castro
+  #   email: mateuscastro123baar@gmail.com
+  #   password: "${USER_MATEUS_PASSWORD:-Senha@123}"
+  #   times:
+  #     - ipea-data-engineering
+  #   personas:
+  #     - data-security-specialist
 

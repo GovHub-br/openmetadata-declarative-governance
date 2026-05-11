@@ -1,0 +1,46 @@
+# Personas OpenMetadata versionadas a partir da instancia dev.
+#
+# Campos aceitos:
+# - nome / name
+# - nome_exibicao / displayName
+# - descricao / description
+# - padrao / default
+# - dominios / domains
+# - proprietarios / owners
+
+personas:
+  - nome: Cientista de Dados
+    nome_exibicao: data-scientist
+    descricao: >-
+      Responsável por análise exploratória, modelagem estatística, machine learning e geração de insights a partir dos dados, apoiando decisões técnicas, estratégicas e de negócio.
+    padrao: false
+
+  - nome: data-engineer
+    nome_exibicao: Engenheiro(a) de Dados
+    descricao: >-
+      Responsável pelo desenvolvimento e manutenção de pipelines, modelos dbt, integrações e estruturas analíticas. Garante a disponibilidade, qualidade, rastreabilidade e documentação dos ativos de dados usados pela organização.
+    padrao: false
+
+  - nome: data-governance-specialist
+    nome_exibicao: Especialista em Governança de Dados
+    descricao: >-
+      Responsável por promover boas práticas de governança de dados, incluindo documentação, classificação, glossários, ownership, qualidade, políticas de acesso e padronização dos metadados dos ativos da organização.
+    padrao: false
+
+  - nome: dataops-specialist
+    nome_exibicao: Especialista em DataOps
+    descricao: >-
+      Responsável por automação, observabilidade, confiabilidade e operação contínua dos pipelines e plataformas de dados, garantindo fluxos estáveis, rastreáveis, reproduzíveis e escaláveis.
+    padrao: false
+
+  - nome: data-security-specialist
+    nome_exibicao: Especialista em Segurança de Dados
+    descricao: >-
+      Responsável por proteger os ativos de dados da organização, atuando em políticas de acesso, classificação de dados sensíveis, privacidade, auditoria, rastreabilidade e conformidade.
+    padrao: false
+
+  - nome: ia-engineer
+    nome_exibicao: Engenheiro(a) de IA
+    descricao: >-
+      Responsável por desenvolver e operacionalizar soluções de inteligência artificial, incluindo aplicações com LLMs, RAG, agentes, pipelines de inferência, APIs, avaliação de modelos e integrações com sistemas de dados.
+    padrao: false

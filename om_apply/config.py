@@ -18,6 +18,7 @@ RESOURCE_FILES = {
     "domains": ("domains.yml", "domains.yaml", "dominios.yml", "dominios.yaml"),
     "teams": ("teams.yml", "teams.yaml", "times.yml", "times.yaml"),
     "users": ("users.yml", "users.yaml", "usuarios.yml", "usuarios.yaml"),
+    "personas": ("personas.yml", "personas.yaml"),
     "data_products": (
         "data_products.yml",
         "data_products.yaml",
@@ -32,6 +33,7 @@ RESOURCE_KEYS = {
     "domains": ("domains", "dominios"),
     "teams": ("teams", "times", "time"),
     "users": ("users", "usuarios"),
+    "personas": ("personas",),
     "data_products": (
         "data_products",
         "dataproducts",

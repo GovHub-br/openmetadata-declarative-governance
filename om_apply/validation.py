@@ -39,6 +39,7 @@ def validate_password_spec(password: str, resource_name: str) -> str | None:
 def validate_config_rules(config: dict[str, Any]) -> None:
     domains = get_resource_items(config, ["domains", "dominios"], "domain")
     users = get_resource_items(config, ["users", "usuarios"], "user")
+    personas = get_resource_items(config, ["personas"], "persona")
     data_products = get_resource_items(
         config,
         ["data_products", "dataProducts", "produtos_dados", "produtos_de_dados"],
@@ -62,6 +63,17 @@ def validate_config_rules(config: dict[str, Any]) -> None:
             name = get_value(user, ["name", "nome"], "<sem nome>")
             password = str(get_value(user, ["password", "senha"]))
             error = validate_password_spec(password, f"user {name}")
+            if error:
+                errors.append(error)
+
+    for persona in personas:
+        if has_value(persona, ["owners", "proprietarios"]):
+            name = get_value(persona, ["name", "nome"], "<sem nome>")
+            error = validate_owner_specs(
+                get_value(persona, ["owners", "proprietarios"]),
+                "user",
+                f"persona {name}",
+            )
             if error:
                 errors.append(error)
 

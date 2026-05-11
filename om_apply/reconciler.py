@@ -79,6 +79,58 @@ def domain_patch_payload(
     return payload
 
 
+def base_persona_payload(item: Mapping[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {"name": str(get_value(item, ["name", "nome"]))}
+    display_name = optional_str(item, ["displayName", "display_name", "nome_exibicao"])
+    description = optional_str(item, ["description", "descricao"])
+    is_default = as_bool(get_value(item, ["default", "padrao"], None))
+    if display_name:
+        payload["displayName"] = display_name
+    if description:
+        payload["description"] = description
+    if is_default is not None:
+        payload["default"] = is_default
+    return payload
+
+
+def persona_create_payload(
+    item: Mapping[str, Any],
+    client: OpenMetadataClient,
+    *,
+    include_refs: bool,
+) -> dict[str, Any]:
+    payload = base_persona_payload(item)
+    domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
+    if domains:
+        payload["domains"] = client.resolve_reference_names(domains, "domain")
+    if include_refs and has_value(item, ["owners", "proprietarios"]):
+        payload["owners"] = client.resolve_references(
+            get_value(item, ["owners", "proprietarios"]), "user"
+        )
+    return payload
+
+
+def persona_patch_payload(
+    item: Mapping[str, Any],
+    client: OpenMetadataClient,
+    *,
+    include_refs: bool,
+) -> dict[str, Any]:
+    payload = {
+        key: value
+        for key, value in base_persona_payload(item).items()
+        if key not in {"name"}
+    }
+    domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
+    if domains:
+        payload["domains"] = client.resolve_references(domains, "domain")
+    if include_refs and has_value(item, ["owners", "proprietarios"]):
+        payload["owners"] = client.resolve_references(
+            get_value(item, ["owners", "proprietarios"]), "user"
+        )
+    return payload
+
+
 def team_payload(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
@@ -306,6 +358,25 @@ def create_or_patch_domain(
     client.put_entity("domains", payload, "domain")
 
 
+def create_or_patch_persona(
+    item: Mapping[str, Any],
+    client: OpenMetadataClient,
+    *,
+    include_refs: bool,
+) -> None:
+    name = str(get_value(item, ["name", "nome"]))
+    existing = client.get_by_name("persona", name, fields=["domains", "users"])
+    if existing:
+        payload = persona_patch_payload(item, client, include_refs=include_refs)
+        print(f"[persona] atualizando {name}")
+        client.patch_entity("personas", existing["id"], payload, "persona")
+        return
+
+    payload = persona_create_payload(item, client, include_refs=include_refs)
+    print(f"[persona] criando {name}")
+    client.put_entity("personas", payload, "persona")
+
+
 def create_or_patch_team(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
@@ -402,6 +473,7 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
     warnings: list[str] = []
     domains = get_resource_items(config, ["domains", "dominios"], "domain")
     teams = get_resource_items(config, ["teams", "times", "time"], "team")
+    personas = get_resource_items(config, ["personas"], "persona")
     users = get_resource_items(config, ["users", "usuarios"], "user")
     data_products = get_resource_items(
         config,
@@ -411,6 +483,9 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
 
     for domain in domains:
         create_or_patch_domain(domain, client, include_refs=False)
+
+    for persona in personas:
+        create_or_patch_persona(persona, client, include_refs=False)
 
     for team in teams:
         create_or_patch_team(team, client, warnings, include_owners=False)
@@ -423,6 +498,10 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
             domain, ["experts", "especialistas"]
         ):
             create_or_patch_domain(domain, client, include_refs=True)
+
+    for persona in personas:
+        if has_value(persona, ["owners", "proprietarios"]):
+            create_or_patch_persona(persona, client, include_refs=True)
 
     for team in teams:
         create_or_patch_team(team, client, warnings, include_owners=True)
