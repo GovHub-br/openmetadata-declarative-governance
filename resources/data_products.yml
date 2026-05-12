@@ -9,3 +9,33 @@ data_products:
     dominio: orcamento_publico
     inherit_from_domain: true
 
+  - nome: contratos
+    nome_exibicao: Contratos
+    descricao: Produto de dados relacionado a contratos.
+    dominio: contratos
+    inherit_from_domain: true
+
+  - nome: pessoas
+    nome_exibicao: Pessoas
+    descricao: Produto de dados relacionado a pessoas.
+    dominio: pessoas
+    inherit_from_domain: true
+
+  - nome: ted
+    nome_exibicao: TED
+    descricao: Produto de dados relacionado a TED.
+    dominio: ted
+    inherit_from_domain: true
+
+  - nome: orcamento
+    nome_exibicao: Orcamento
+    descricao: Produto de dados relacionado a orcamento.
+    dominio: orcamento
+    inherit_from_domain: true
+
+  - nome: sistema_sisbolsas
+    nome_exibicao: Sistema Sisbolsas
+    descricao: Produto de dados relacionado ao sistema Sisbolsas.
+    dominio: sistema_sisbolsas
+    inherit_from_domain: true
+
