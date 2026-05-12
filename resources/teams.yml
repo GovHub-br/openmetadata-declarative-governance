@@ -11,3 +11,15 @@ times:
     proprietarios:
       - user:arthuralves1538
 
+  - nome: ipea
+    nome_exibicao: ipea-data-engineering
+    email: dados-ipea@example.org
+    equipe_publica: true
+    descricao: Time responsavel por dados do IPEA.
+    dominios:
+      - contratos
+      - pessoas
+      - ted
+      - orcamento
+      - sistema_sisbolsas
+
