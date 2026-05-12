@@ -11,3 +11,38 @@ domains:
     especialistas:
       - user:arthuralves1538
 
+  - nome: contratos
+    nome_exibicao: Contratos
+    tipo_dominio: Aggregate
+    descricao: Dados e produtos relacionados a contratos e execucao contratual.
+    proprietarios:
+      - team:ipea-data-engineering
+
+  - nome: pessoas
+    nome_exibicao: Pessoas
+    tipo_dominio: Aggregate
+    descricao: Dados e produtos relacionados a pessoas e servidores.
+    proprietarios:
+      - team:ipea-data-engineering
+
+  - nome: ted
+    nome_exibicao: TED
+    tipo_dominio: Aggregate
+    descricao: Dados e produtos relacionados a TED e instrumentos de transferencia.
+    proprietarios:
+      - team:ipea-data-engineering
+
+  - nome: orcamento
+    nome_exibicao: Orcamento
+    tipo_dominio: Aggregate
+    descricao: Dados e produtos relacionados a orcamento e execucao financeira.
+    proprietarios:
+      - team:ipea-data-engineering
+
+  - nome: sistema_sisbolsas
+    nome_exibicao: Sistema Sisbolsas
+    tipo_dominio: Aggregate
+    descricao: Dados e produtos relacionados ao sistema Sisbolsas.
+    proprietarios:
+      - team:ipea-data-engineering
+
