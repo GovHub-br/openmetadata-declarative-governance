@@ -1,0 +1,50 @@
+name: Aplicar no OpenMetadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "resources/**"
+      - "om_apply/**"
+      - "om_apply.py"
+      - "requirements.txt"
+  workflow_dispatch:
+
+# Um apply por vez, e nenhum cancelado no meio: dois rodando juntos
+# disputariam a mesma entidade, e um interrompido deixa metade aplicada.
+concurrency:
+  group: openmetadata-apply
+  cancel-in-progress: false
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    environment: openmetadata
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Variaveis dos resources
+        env:
+          RESOURCE_ENV: ${{ secrets.OM_RESOURCE_ENV }}
+        run: |
+          printf '%s\n' "$RESOURCE_ENV" | while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::add-mask::${line#*=}"
+            echo "$line" >> "$GITHUB_ENV"
+          done
+
+      # Sem upload do log de auditoria: o repositorio e publico, o artefato
+      # seria baixavel e o payload pode conter e-mail de usuario novo. A
+      # mensagem de erro da API ja sai no log do job.
+      - name: Apply
+        env:
+          OM_HOST: ${{ vars.OM_HOST }}
+          OM_TOKEN: ${{ secrets.OM_TOKEN }}
+        run: python om_apply.py --file resources

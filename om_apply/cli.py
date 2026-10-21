@@ -11,6 +11,7 @@ from .audit import AuditLogger
 from .client import OpenMetadataClient
 from .config import read_config
 from .errors import OpenMetadataError
+from .export import export_resources
 from .reconciler import apply_config
 from .validation import validate_config_rules
 
@@ -54,6 +55,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Valida o YAML e sai sem chamar a API.",
     )
+    parser.add_argument(
+        "--export",
+        metavar="DIR",
+        help=(
+            "Gera os YAMLs de DIR a partir da instancia, preservando os "
+            "dominios_externos ja declarados em DIR/domains.yml."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -61,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
 
     try:
+        if args.export:
+            return run_export(args)
         resource_path = Path(args.file)
         if not resource_path.exists():
             raise ValueError(
@@ -95,5 +106,25 @@ def main(argv: list[str] | None = None) -> int:
 
     for warning in warnings:
         print(f"Aviso: {warning}", file=sys.stderr)
-    print("Concluido.")
+    counts = client.counts
+    prefix = "Dry-run concluido" if args.dry_run else "Concluido"
+    print(
+        f"{prefix}: {counts['criados']} criados, {counts['atualizados']} "
+        f"atualizados, {counts['sem_mudanca']} sem mudanca."
+    )
+    return 0
+
+
+def run_export(args: argparse.Namespace) -> int:
+    if not args.host or not args.token:
+        print("Erro: --export precisa de OM_HOST e OM_TOKEN.", file=sys.stderr)
+        return 2
+    client = OpenMetadataClient(
+        host=args.host,
+        token=args.token,
+        timeout=args.timeout,
+        audit=AuditLogger(args.audit_log),
+    )
+    export_resources(client, args.export)
+    print(f"Resources exportados para {args.export}.")
     return 0

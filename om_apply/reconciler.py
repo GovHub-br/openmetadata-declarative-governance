@@ -7,7 +7,6 @@ from .errors import OpenMetadataError
 from .utils import (
     as_bool,
     as_list,
-    first_or_warn,
     get_resource_items,
     get_value,
     has_value,
@@ -63,10 +62,11 @@ def domain_patch_payload(
     *,
     include_refs: bool,
 ) -> dict[str, Any]:
+    # `parent` so vale na criacao: mover subdominio de pai nao e um PATCH.
     payload = {
         key: value
         for key, value in base_domain_payload(item).items()
-        if key not in {"name"}
+        if key not in {"name", "parent"}
     }
     if include_refs and has_value(item, ["owners", "proprietarios"]):
         payload["owners"] = client.resolve_references(
@@ -96,25 +96,17 @@ def base_persona_payload(item: Mapping[str, Any]) -> dict[str, Any]:
 def persona_create_payload(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
-    *,
-    include_refs: bool,
 ) -> dict[str, Any]:
     payload = base_persona_payload(item)
     domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
     if domains:
         payload["domains"] = client.resolve_reference_names(domains, "domain")
-    if include_refs and has_value(item, ["owners", "proprietarios"]):
-        payload["owners"] = client.resolve_references(
-            get_value(item, ["owners", "proprietarios"]), "user"
-        )
     return payload
 
 
 def persona_patch_payload(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
-    *,
-    include_refs: bool,
 ) -> dict[str, Any]:
     payload = {
         key: value
@@ -124,10 +116,6 @@ def persona_patch_payload(
     domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
     if domains:
         payload["domains"] = client.resolve_references(domains, "domain")
-    if include_refs and has_value(item, ["owners", "proprietarios"]):
-        payload["owners"] = client.resolve_references(
-            get_value(item, ["owners", "proprietarios"]), "user"
-        )
     return payload
 
 
@@ -173,23 +161,36 @@ def team_payload(
     return payload
 
 
-def user_payload(
-    item: Mapping[str, Any],
-    client: OpenMetadataClient,
-    warnings: list[str],
-    *,
-    for_patch: bool,
-) -> dict[str, Any]:
-    email = optional_str(item, ["email"])
+def user_name(item: Mapping[str, Any]) -> str:
     name = optional_str(item, ["name", "nome"])
+    email = optional_str(item, ["email"])
     if not name and email:
         name = email.split("@", 1)[0]
     if not name:
         raise ValueError("Usuario precisa de name/nome ou email.")
-    if not email:
-        raise ValueError(f"Usuario {name} precisa de email.")
+    return name
 
-    payload: dict[str, Any] = {"name": name, "email": email}
+
+def user_payload(
+    item: Mapping[str, Any],
+    client: OpenMetadataClient,
+    *,
+    for_patch: bool,
+) -> dict[str, Any]:
+    name = user_name(item)
+    payload: dict[str, Any] = {"name": name}
+    # O e-mail so e exigido para criar: o repositorio e publico e usuario
+    # existente e identificado pelo nome, sem dado pessoal versionado.
+    if not for_patch:
+        email = optional_str(item, ["email"])
+        if not email:
+            raise ValueError(
+                f"Usuario {name} nao existe na instancia e precisa de email "
+                "para ser criado; use uma variavel, por exemplo "
+                '"${USER_FULANO_EMAIL}".'
+            )
+        payload["email"] = email
+
     display_name = optional_str(item, ["displayName", "display_name", "nome_exibicao"])
     description = optional_str(item, ["description", "descricao"])
     if display_name:
@@ -219,20 +220,15 @@ def user_payload(
     if personas:
         payload["personas"] = client.resolve_references(personas, "persona")
 
-    domain = first_or_warn(
-        as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None)),
-        f"usuario {name}",
-        "dominio",
-        warnings,
-    )
-    if domain:
+    domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
+    if domains:
         if for_patch:
-            payload["domains"] = client.resolve_references([domain], "domain")
+            payload["domains"] = client.resolve_references(domains, "domain")
         else:
-            payload["domains"] = client.resolve_reference_names([domain], "domain")
+            payload["domains"] = client.resolve_reference_names(domains, "domain")
 
     is_bot = as_bool(get_value(item, ["isBot", "is_bot"], None))
-    is_admin = as_bool(get_value(item, ["isAdmin", "is_admin"], None))
+    is_admin = as_bool(get_value(item, ["isAdmin", "is_admin", "administrador"], None))
     if is_bot is not None:
         payload["isBot"] = is_bot
     if is_admin is not None:
@@ -349,8 +345,7 @@ def create_or_patch_domain(
     existing = client.get_by_name("domain", name, fields=["owners", "experts"])
     if existing:
         payload = domain_patch_payload(item, client, include_refs=include_refs)
-        print(f"[domain] atualizando {name}")
-        client.patch_entity("domains", existing["id"], payload, "domain")
+        client.patch_entity("domains", existing, payload, "domain")
         return
 
     payload = domain_create_payload(item, client, include_refs=include_refs)
@@ -361,18 +356,15 @@ def create_or_patch_domain(
 def create_or_patch_persona(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
-    *,
-    include_refs: bool,
 ) -> None:
     name = str(get_value(item, ["name", "nome"]))
-    existing = client.get_by_name("persona", name, fields=["domains", "users"])
+    existing = client.get_by_name("persona", name, fields=["domains"])
     if existing:
-        payload = persona_patch_payload(item, client, include_refs=include_refs)
-        print(f"[persona] atualizando {name}")
-        client.patch_entity("personas", existing["id"], payload, "persona")
+        payload = persona_patch_payload(item, client)
+        client.patch_entity("personas", existing, payload, "persona")
         return
 
-    payload = persona_create_payload(item, client, include_refs=include_refs)
+    payload = persona_create_payload(item, client)
     print(f"[persona] criando {name}")
     client.put_entity("personas", payload, "persona")
 
@@ -397,11 +389,7 @@ def create_or_patch_team(
             mutable_payload["domains"] = client.resolve_references(
                 mutable_payload["domains"], "domain"
             )
-        if mutable_payload:
-            print(f"[team] atualizando {name}")
-            client.patch_entity("teams", existing["id"], mutable_payload, "team")
-        else:
-            print(f"[team] sem mudancas para {name}")
+        client.patch_entity("teams", existing, mutable_payload, "team")
         return
 
     print(f"[team] criando {name}")
@@ -411,14 +399,8 @@ def create_or_patch_team(
 def create_or_patch_user(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
-    warnings: list[str],
 ) -> None:
-    name = optional_str(item, ["name", "nome"])
-    email = optional_str(item, ["email"])
-    if not name and email:
-        name = email.split("@", 1)[0]
-    if not name:
-        raise ValueError("Usuario precisa de name/nome ou email.")
+    name = user_name(item)
     password = optional_str(item, ["password", "senha"])
     confirm_password = optional_str(
         item, ["confirmPassword", "confirm_password", "confirmar_senha"], password
@@ -428,20 +410,19 @@ def create_or_patch_user(
         "user", name, fields=["teams", "personas", "domains", "roles"]
     )
     if existing:
-        payload = user_payload(item, client, warnings, for_patch=True)
+        payload = user_payload(item, client, for_patch=True)
         mutable_payload = {
             key: value
             for key, value in payload.items()
             if key not in {"name", "password", "confirmPassword"}
         }
-        print(f"[user] atualizando {name}")
-        client.patch_entity("users", existing["id"], mutable_payload, "user")
+        client.patch_entity("users", existing, mutable_payload, "user")
         if password:
             print(f"[user] atualizando senha de {name}")
             client.change_user_password(name, password, str(confirm_password))
         return
 
-    payload = user_payload(item, client, warnings, for_patch=False)
+    payload = user_payload(item, client, for_patch=False)
     print(f"[user] criando {name}")
     client.put_entity("users", payload, "user")
     if password:
@@ -459,8 +440,7 @@ def create_or_patch_data_product(
     )
     if existing:
         payload = data_product_patch_payload(item, client)
-        print(f"[dataProduct] atualizando {name}")
-        client.patch_entity("dataProducts", existing["id"], payload, "data_product")
+        client.patch_entity("dataProducts", existing, payload, "data_product")
         return
 
     payload = data_product_create_payload(item, client)
@@ -485,23 +465,19 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
         create_or_patch_domain(domain, client, include_refs=False)
 
     for persona in personas:
-        create_or_patch_persona(persona, client, include_refs=False)
+        create_or_patch_persona(persona, client)
 
     for team in teams:
         create_or_patch_team(team, client, warnings, include_owners=False)
 
     for user in users:
-        create_or_patch_user(user, client, warnings)
+        create_or_patch_user(user, client)
 
     for domain in domains:
         if has_value(domain, ["owners", "proprietarios"]) or has_value(
             domain, ["experts", "especialistas"]
         ):
             create_or_patch_domain(domain, client, include_refs=True)
-
-    for persona in personas:
-        if has_value(persona, ["owners", "proprietarios"]):
-            create_or_patch_persona(persona, client, include_refs=True)
 
     for team in teams:
         create_or_patch_team(team, client, warnings, include_owners=True)

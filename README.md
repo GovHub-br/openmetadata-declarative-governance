@@ -25,8 +25,30 @@ O fluxo respeita dependencias entre recursos:
 7. atualiza times com owners;
 8. cria/atualiza produtos de dados.
 
-Entidades existentes sao atualizadas com `PATCH`/JSON Patch. Entidades novas
+Entidades existentes sao atualizadas com `PATCH`/JSON Patch contendo **so os
+campos que diferem** da instancia; sem diferenca, nenhuma chamada e feita.
+Rodar o apply duas vezes seguidas termina com `0 atualizados`. Entidades novas
 sao criadas pelos endpoints de criacao/create-or-update da API.
+
+O apply nao remove nada: o que existe na instancia e nao esta no YAML fica
+como esta.
+
+## Dominios externos
+
+A instancia e compartilhada entre ministerios, e alguns mantem a propria
+hierarquia de dominios e produtos pelo sync de governanca do repositorio deles
+(o MCid em `data-application-cidades`, por exemplo). Essas hierarquias ficam
+listadas em `dominios_externos`, no `domains.yml`:
+
+```yaml
+dominios_externos:
+  - Cultura
+  - MCid
+```
+
+Elas podem ser **referenciadas** (dominio de usuario, de time, de persona), mas
+declarar um dominio ou produto dentro delas e erro de validacao. Assim cada
+entidade tem um unico escritor.
 
 ## Estrutura
 
@@ -34,6 +56,7 @@ sao criadas pelos endpoints de criacao/create-or-update da API.
 openmetadata_script/
   Dockerfile
   requirements.txt
+  requirements-dev.txt
   run.sh
   om_apply.py
   om_apply/
@@ -41,10 +64,13 @@ openmetadata_script/
     cli.py
     client.py
     config.py
+    diff.py
     errors.py
+    export.py
     reconciler.py
     utils.py
     validation.py
+  tests/
   resources/
     domains.yml
     personas.yml
@@ -60,15 +86,41 @@ Crie ou edite `.env`:
 ```bash
 OM_HOST=https://openmetadata.clusterlab.lappis.rocks
 OM_TOKEN=seu-token
-USER_MATEUS_PASSWORD=Senha@123
 ```
 
 O `.env` real fica ignorado pelo Git. Use variaveis de ambiente para valores
-sensiveis dentro dos YAMLs:
+sensiveis dentro dos YAMLs.
+
+### E-mail e senha de usuario
+
+Este repositorio e publico, entao **nenhum e-mail pessoal e versionado**.
+Usuario existente e identificado pelo `nome`; o e-mail so e exigido para criar
+um usuario novo, e vem de variavel:
 
 ```yaml
-password: "${USER_MATEUS_PASSWORD:-Senha@123}"
+users:
+  - nome: fulano
+    email: "${USER_FULANO_EMAIL}"
+    senha: "${USER_FULANO_PASSWORD}"
 ```
+
+No CI essas variaveis vem do secret `OM_RESOURCE_ENV` (uma linha
+`CHAVE=valor` por variavel). A saida do dry-run e o log de auditoria mascaram
+`email`, `password` e `token`.
+
+## Exportar o estado da instancia
+
+Para alinhar o repositorio com a instancia (por exemplo, depois de alguem
+mexer pela interface):
+
+```bash
+python3 om_apply.py --export resources
+```
+
+Os YAMLs sao reescritos a partir da instancia, preservando os
+`dominios_externos` ja declarados. Ficam de fora as hierarquias externas, o
+time `Organization`, bots, o usuario `admin` embutido e qualquer e-mail. Logo
+depois de um export, `--dry-run` deve terminar com `0 criados, 0 atualizados`.
 
 ## Uso recomendado
 
@@ -81,7 +133,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-Dry-run:
+Dry-run (consulta a instancia e mostra so o que mudaria, sem escrever):
 
 ```bash
 ./run.sh --dry-run
@@ -164,10 +216,11 @@ O `--validate-only` checa regras que ja conhecemos da instancia dev:
 - senha precisa ter maiuscula, minuscula, digito e caractere especial;
 - entidades com mais de um owner nao podem misturar ou repetir owner `team`;
 - para multiplos owners, use owners do tipo `user`;
-- `users` aceita apenas um dominio; se houver mais de um, o script usa o
-  primeiro e emite aviso;
-- `personas` podem declarar `dominios` e `proprietarios`;
-- referencias podem ser feitas por `name`, FQN ou `displayName`.
+- nenhum dominio ou produto pode ser declarado dentro de `dominios_externos`;
+- `personas` podem declarar `dominios`; persona nao tem `proprietarios` no
+  OpenMetadata (a API recusa o campo);
+- referencias podem ser feitas por `name`, FQN ou `displayName`. Referencia
+  que nao existe na instancia falha tambem no dry-run.
 
 ## Referencias
 
@@ -207,16 +260,36 @@ As chaves podem ser em portugues ou no formato da API:
 - `senha` / `password`
 - `confirmar_senha` / `confirmPassword`
 - `padrao` / `default`
+- `papeis` / `roles`
+- `administrador` / `isAdmin` (so `true` e exportado; para revogar, declare
+  `false`)
+
+## CI
+
+- **Todo PR**: testes, `--validate-only` e, em PR do proprio repositorio, um
+  dry-run contra a instancia. O resultado vira um comentario no PR (atualizado
+  a cada push), com o que o merge vai criar ou alterar.
+- **Push na main** que mexa em `resources/` ou no codigo: apply, um por vez
+  (`concurrency`), no environment `openmetadata`.
+
+Configuracao no GitHub:
+
+| onde | nome | conteudo |
+|---|---|---|
+| variable | `OM_HOST` | URL da instancia |
+| secret | `OM_TOKEN` | token do bot de governanca (precisa de permissao de admin para criar time, usuario, role e policy) |
+| secret | `OM_RESOURCE_ENV` | variaveis usadas nos YAMLs, uma `CHAVE=valor` por linha |
+| environment | `openmetadata` | onde o apply roda; pode exigir aprovacao |
 
 ## Desenvolvimento
 
-Validar sintaxe Python:
-
 ```bash
-python3 -m py_compile \
-  om_apply.py \
-  om_apply/*.py
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/pytest -q
 ```
+
+Os testes usam um OpenMetadata em memoria (`tests/fake_om.py`), sem rede.
 
 Rodar localmente sem Docker:
 

@@ -1,48 +1,52 @@
 # Dominios de negocio/governanca.
 # OpenMetadata aceita varios owners usuarios, mas apenas um owner time.
+#
+# `dominios_externos`: hierarquias mantidas pelo sync de governanca de outro
+# repositorio (cada ministerio declara os proprios subdominios e produtos).
+# Aqui elas so podem ser referenciadas; declara-las e erro de validacao.
 
+dominios_externos:
+- Cultura
+- MCid
 domains:
-  - nome: orcamento_publico
-    nome_exibicao: Orcamento Publico
-    tipo_dominio: Aggregate
-    descricao: Dados e produtos relacionados a execucao orcamentaria.
-    proprietarios:
-      - team:mgi-data-engineering
-    especialistas:
-      - user:arthuralves1538
-
-  - nome: contratos
-    nome_exibicao: Contratos
-    tipo_dominio: Aggregate
-    descricao: Dados e produtos relacionados a contratos e execucao contratual.
-    proprietarios:
-      - team:ipea-data-engineering
-
-  - nome: pessoas
-    nome_exibicao: Pessoas
-    tipo_dominio: Aggregate
-    descricao: Dados e produtos relacionados a pessoas e servidores.
-    proprietarios:
-      - team:ipea-data-engineering
-
-  - nome: ted
-    nome_exibicao: TED
-    tipo_dominio: Aggregate
-    descricao: Dados e produtos relacionados a TED e instrumentos de transferencia.
-    proprietarios:
-      - team:ipea-data-engineering
-
-  - nome: orcamento
-    nome_exibicao: Orcamento
-    tipo_dominio: Aggregate
-    descricao: Dados e produtos relacionados a orcamento e execucao financeira.
-    proprietarios:
-      - team:ipea-data-engineering
-
-  - nome: sistema_sisbolsas
-    nome_exibicao: Sistema Sisbolsas
-    tipo_dominio: Aggregate
-    descricao: Dados e produtos relacionados ao sistema Sisbolsas.
-    proprietarios:
-      - team:ipea-data-engineering
-
+- nome: contratos
+  nome_exibicao: Contratos
+  descricao: Dados e produtos relacionados a contratos e execucao contratual.
+  tipo_dominio: Aggregate
+  proprietarios:
+  - ipea-data-engineering
+  especialistas:
+  - joaoegewarth
+- nome: orcamento
+  nome_exibicao: Orcamento
+  descricao: Dados e produtos relacionados a orcamento e execucao financeira.
+  tipo_dominio: Aggregate
+  proprietarios:
+  - ipea-data-engineering
+  especialistas:
+  - joaoegewarth
+- nome: pessoas
+  nome_exibicao: Pessoas
+  descricao: Dados e produtos relacionados a pessoas e servidores.
+  tipo_dominio: Aggregate
+  proprietarios:
+  - ipea-data-engineering
+  especialistas:
+  - joaoegewarth
+- nome: sistema_sisbolsas
+  nome_exibicao: Sistema Sisbolsas
+  descricao: Dados e produtos relacionados ao sistema Sisbolsas.
+  tipo_dominio: Aggregate
+  proprietarios:
+  - ipea-data-engineering
+  especialistas:
+  - davideaguiar
+  - mateusdecastro
+- nome: ted
+  nome_exibicao: TED
+  descricao: Dados e produtos relacionados a TED e instrumentos de transferencia.
+  tipo_dominio: Aggregate
+  proprietarios:
+  - ipea-data-engineering
+  especialistas:
+  - joaoegewarth

@@ -1,26 +1,136 @@
 # Usuarios OpenMetadata.
 #
-# Personas ficam versionadas em resources/personas.yml.
-# Para dados sensiveis, prefira variaveis de ambiente:
-# password: "${USER_PASSWORD:-Senha@123}"
+# Sem e-mail: o repositorio e publico, e usuario existente e identificado pelo
+# nome. Para criar um usuario novo, informe o e-mail por variavel de ambiente
+# (secret no CI):
+#   email: "${USER_FULANO_EMAIL}"
 
 users:
-  - nome: arthuralves1538
-    nome_exibicao: Arthur Alves Melo
-    email: arthuralves1538@gmail.com
-    times:
-      - minc-data-engineering
-      - mgi-data-engineering
-      - ipea-data-engineering
-    personas:
-      - data-security-specialist
-
-  # - nome: mateuscastro
-  #   nome_exibicao: Mateus Castro
-  #   email: mateuscastro123baar@gmail.com
-  #   password: "${USER_MATEUS_PASSWORD:-Senha@123}"
-  #   times:
-  #     - ipea-data-engineering
-  #   personas:
-  #     - data-security-specialist
-
+- nome: arthuralves1538
+  nome_exibicao: Arthur Alves Melo
+  administrador: true
+  times:
+  - ipea-data-engineering
+  - mcid-data-engineering
+  - mgi-data-engineering
+  - minc-data-engineering
+  - mir-data-engineering
+  personas:
+  - data-engineer
+  - data-governance-specialist
+  - dataops-specialist
+  dominios:
+  - contratos
+  - orcamento
+  - pessoas
+  - sistema_sisbolsas
+  - ted
+- nome: camillemoura
+  nome_exibicao: Camille Moura
+  administrador: true
+  personas:
+  - data-governance-specialist
+  - data-security-specialist
+  papeis:
+  - DataSteward
+- nome: davideaguiar
+  nome_exibicao: Davi de Aguiar Vieira
+  times:
+  - ipea-data-engineering
+  - minc-data-engineering
+  personas:
+  - data-engineer
+  - ia-engineer
+  dominios:
+  - contratos
+  - orcamento
+  - pessoas
+  - sistema_sisbolsas
+  - ted
+- nome: gustavorsdemelo
+  nome_exibicao: Gustavo Melo
+  descricao: <p>Gustavo Melo, Engenheiro de Dados do projeto GovHub/Cidades.</p>
+  times:
+  - mcid-data-engineering
+  personas:
+  - data-engineer
+  dominios:
+  - MCid
+- nome: isaquealvesdl
+  nome_exibicao: Isaque Alves
+  administrador: true
+  times:
+  - mcid-data-engineering
+  personas:
+  - data-engineer
+  dominios:
+  - MCid
+- nome: joaoegewarth
+  nome_exibicao: Joao Egewarth
+  times:
+  - ipea-data-engineering
+  - mcid-data-engineering
+  - mgi-data-engineering
+  - minc-data-engineering
+  - mir-data-engineering
+  personas:
+  - data-engineer
+  - data-governance-specialist
+  dominios:
+  - contratos
+  - orcamento
+  - pessoas
+  - sistema_sisbolsas
+  - ted
+- nome: juanricarte77
+  nome_exibicao: Juan Ricarte
+  administrador: true
+  times:
+  - mcid-data-engineering
+  personas:
+  - data-engineer
+  dominios:
+  - MCid
+- nome: lucasgabottino
+  nome_exibicao: Lucas Bottino
+  descricao: <p>Lucas Bottino, Engenheiro de Dados do projeto GovHub/Cidades.</p>
+  administrador: true
+  times:
+  - mcid-data-engineering
+  - minc-data-engineering
+  personas:
+  - data-engineer
+  dominios:
+  - Cultura
+  - MCid
+- nome: mateusdecastro
+  nome_exibicao: Mateus de Castro
+  times:
+  - ipea-data-engineering
+  - mcid-data-engineering
+  personas:
+  - data-engineer
+  - ia-engineer
+  dominios:
+  - contratos
+  - orcamento
+  - pessoas
+  - sistema_sisbolsas
+  - ted
+- nome: milenafernandes594
+  nome_exibicao: Milena Fernandes Rocha
+  times:
+  - mcid-data-engineering
+  personas:
+  - data-engineer
+  dominios:
+  - MCid
+- nome: vitorpesoares
+  nome_exibicao: Vitor Soares
+  administrador: true
+  times:
+  - mcid-data-engineering
+  personas:
+  - data-engineer
+  dominios:
+  - MCid

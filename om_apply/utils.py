@@ -120,22 +120,6 @@ def reference_names(values: Any) -> list[str]:
     return names
 
 
-def first_or_warn(
-    values: list[Any],
-    resource_name: str,
-    field_name: str,
-    warnings: list[str],
-) -> Any | None:
-    if not values:
-        return None
-    if len(values) > 1:
-        warnings.append(
-            f"{resource_name}: OpenMetadata aceita um unico {field_name}; "
-            f"usando {values[0]!r} e ignorando {values[1:]!r}."
-        )
-    return values[0]
-
-
 def normalize_domain_type(value: Any) -> str:
     if value is MISSING or value is None:
         return "Aggregate"
