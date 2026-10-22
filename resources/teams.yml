@@ -22,7 +22,20 @@ times:
   - MCid
   - MCid.Habitacao
   papeis_padrao:
-  - MCidLeitorDominioRole
+  - ConsumidorDominioRole
+- nome: minc-consumidores
+  nome_exibicao: Consumidores de dados do MINC
+  descricao: 'Quem consome os dados do MinC: vê só o domínio Cultura e sugere mudanças por Task.'
+  equipe_publica: false
+  dominios:
+  - Cultura
+  - Cultura.Cadastro Cultural
+  - Cultura.Fomento Direto
+  - Cultura.Incentivo Fiscal
+  - Cultura.Indicadores
+  - Cultura.Repasse Federativo
+  papeis_padrao:
+  - ConsumidorDominioRole
 - nome: mcid-data-engineering
   nome_exibicao: Time de Engenharia de Dados do MCID
   descricao: Time responsavel por dados do MCID.

@@ -11,9 +11,10 @@ roles:
     politicas:
       - GovernancaComoCodigoPolicy
 
-  # Dada pelo time mcid-consumidores: basta pôr a pessoa no time.
-  - nome: MCidLeitorDominioRole
-    nome_exibicao: "MCid: leitor do domínio"
-    descricao: Perfil de consumo do domínio MCid.
+  # Dada pelos times de consumidores (mcid-consumidores, minc-consumidores):
+  # o dominio vem do time e do usuario, a regra e a mesma para todos.
+  - nome: ConsumidorDominioRole
+    nome_exibicao: Consumidor do domínio
+    descricao: Perfil de consumo por domínio, leitura e sugestão por Task.
     politicas:
-      - MCidLeitorDominioPolicy
+      - ConsumidorDominioPolicy

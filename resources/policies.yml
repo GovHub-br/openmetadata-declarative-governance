@@ -24,11 +24,13 @@ policies:
         recursos: [dataProduct, domain, eventsubscription, persona, policy, role, team, user]
         operacoes: [All]
 
-  # Perfil de consumo do MCid: ve so o dominio e sugere mudanca por Task.
+  # Perfil de consumo por dominio: ve so os dominios do proprio usuario e
+  # sugere mudanca por Task. Nao cita dominio nenhum: quem define o dominio e o
+  # time de consumidores (mcid-consumidores, minc-consumidores) e o usuario.
   #
   # Comportamento conferido na instancia (1.13.3, 22/10/2026):
   # - `hasDomain()` aceita o dominio herdado do time e casa subdominio: quem
-  #   tem MCid (direto ou pelo time) ve MCid.Habitacao.
+  #   tem MCid (direto ou pelo time) abre ativo de MCid.Habitacao.
   # - ativo SEM dominio passa em `hasDomain()`, entao fica visivel. E
   #   intencional no OpenMetadata (igual na 2.0.6); a saida e dar dominio ao
   #   ativo. No Cidades, o sync de governanca da o dominio do servico a todo
@@ -51,11 +53,11 @@ policies:
   # - o OM guarda o contexto de permissao em cache pelo NOME do usuario, e o
   #   cache sobrevive a apagar e recriar o usuario: testes com usuario
   #   temporario precisam de nome novo a cada caso.
-  - nome: MCidLeitorDominioPolicy
-    nome_exibicao: "MCid: leitura do domínio e sugestão"
-    descricao: Vê só os ativos do domínio MCid e sugere mudanças por Task; não edita direto.
+  - nome: ConsumidorDominioPolicy
+    nome_exibicao: Consumidor do domínio
+    descricao: Vê só os ativos dos próprios domínios e sugere mudanças por Task; não edita direto.
     regras:
-      - nome: MCidLeitor-ForaDoDominio
+      - nome: Consumidor-ForaDoDominio
         efeito: deny
         # `All` basta: glossario, tags, times e usuarios nao tem dominio, e
         # `hasDomain()` deixa passar o que nao tem dominio.
@@ -65,7 +67,7 @@ policies:
 
       # A edicao direta pularia o git e se perderia no proximo sync; a
       # mudanca chega pela Task de sugestao, que vira PR.
-      - nome: MCidLeitor-SemEdicaoDireta
+      - nome: Consumidor-SemEdicaoDireta
         efeito: deny
         recursos:
           - apiCollection
