@@ -8,6 +8,8 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY receptor.py ./
-USER nobody
+# numerico, e nao `nobody`: com runAsNonRoot o kubelet so aceita usuario
+# que ele consiga provar que nao e root
+USER 65534:65534
 EXPOSE 8080
 ENTRYPOINT ["python", "/app/receptor.py"]
