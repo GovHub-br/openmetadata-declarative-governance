@@ -242,6 +242,21 @@ def test_policy_role_e_papel_padrao_criados_na_ordem_e_depois_estaveis(om: FakeO
     ]
     assert om.find("teams", "consumidores")["defaultRoles"][0]["name"] == "LeitorRole"
 
+def test_senha_vai_so_na_criacao_e_nunca_no_usuario_existente(
+    om: FakeOpenMetadata, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("CARLA_EMAIL", "carla@x.org")
+    monkeypatch.setenv("CARLA_SENHA", "Senha@Forte1")
+    usuario = {"nome": "carla", "email": "${CARLA_EMAIL}", "senha": "${CARLA_SENHA}"}
+    resources = write_resources(tmp_path, users={"users": [usuario]})
+
+    apply_config(read_config(str(resources)), client_for(om))
+    (metodo, endpoint, corpo), = om.mutations
+    assert (metodo, endpoint) == ("POST", "users")
+    assert corpo["createPasswordType"] == "ADMIN_CREATE"
+    assert corpo["password"] == corpo["confirmPassword"] == "Senha@Forte1"
+
+    # reaplicar o YAML nao reseta a senha que a pessoa ja trocou
     om.mutations.clear()
     apply_config(read_config(str(resources)), client_for(om))
     assert om.mutations == []
@@ -326,3 +341,11 @@ def test_membro_de_time_com_dominio_declara_os_dominios_do_time(tmp_path: Path) 
     )
     from om_apply.validation import validate_config_rules
     validate_config_rules(read_config(str(com)))
+def test_dry_run_nao_imprime_senha(om: FakeOpenMetadata, tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.setenv("CARLA_EMAIL", "carla@x.org")
+    monkeypatch.setenv("CARLA_SENHA", "Senha@Forte1")
+    resources = write_resources(
+        tmp_path, users={"users": [{"nome": "carla", "email": "${CARLA_EMAIL}", "senha": "${CARLA_SENHA}"}]}
+    )
+    apply_config(read_config(str(resources)), client_for(om, dry_run=True))
+    assert "Senha@Forte1" not in capsys.readouterr().out

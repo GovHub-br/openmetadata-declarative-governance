@@ -569,34 +569,35 @@ def create_or_patch_user(
     item: Mapping[str, Any],
     client: OpenMetadataClient,
 ) -> None:
-    name = user_name(item)
-    password = optional_str(item, ["password", "senha"])
-    confirm_password = optional_str(
-        item, ["confirmPassword", "confirm_password", "confirmar_senha"], password
-    )
+    """Cria ou ajusta o usuario. A senha so e usada na criacao.
 
+    Em usuario existente a senha nunca e tocada: reaplicar o YAML a cada merge
+    resetaria a senha que a pessoa ja trocou. E a troca de senha de outro
+    usuario (`/users/changePassword`) exige admin, que o bot do CI nao e; a
+    senha inicial vai no proprio POST de criacao (`ADMIN_CREATE`), que o bot
+    pode fazer.
+    """
+    name = user_name(item)
     existing = client.get_by_name(
         "user", name, fields=["teams", "personas", "domains", "roles"]
     )
     if existing:
         payload = user_payload(item, client, for_patch=True)
-        mutable_payload = {
-            key: value
-            for key, value in payload.items()
-            if key not in {"name", "password", "confirmPassword"}
-        }
+        mutable_payload = {key: value for key, value in payload.items() if key != "name"}
         client.patch_entity("users", existing, mutable_payload, "user")
-        if password:
-            print(f"[user] atualizando senha de {name}")
-            client.change_user_password(name, password, str(confirm_password))
         return
 
     payload = user_payload(item, client, for_patch=False)
-    print(f"[user] criando {name}")
-    client.put_entity("users", payload, "user")
+    password = optional_str(item, ["password", "senha"])
     if password:
-        print(f"[user] definindo senha de {name}")
-        client.change_user_password(name, password, str(confirm_password))
+        payload["createPasswordType"] = "ADMIN_CREATE"
+        payload["password"] = password
+        payload["confirmPassword"] = optional_str(
+            item, ["confirmPassword", "confirm_password", "confirmar_senha"], password
+        )
+    print(f"[user] criando {name}")
+    # POST, e nao PUT: o create-or-update ignora a senha do payload.
+    client.post_entity("users", payload, "user")
 
 
 def create_or_patch_data_product(
