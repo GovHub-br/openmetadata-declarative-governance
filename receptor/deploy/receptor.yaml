@@ -1,0 +1,67 @@
+# Receptor de sugestoes do OpenMetadata.
+#
+# Fica no mesmo namespace do OpenMetadata e so e alcancado por ele (Service
+# ClusterIP, sem Ingress): o alerta do OM chama
+#   http://receptor-sugestoes.<namespace>.svc.cluster.local:8080/openmetadata
+# O receptor so faz chamadas de saida para api.github.com.
+#
+# O Secret `receptor-sugestoes` e criado a mao, fora do git:
+#   kubectl -n <namespace> create secret generic receptor-sugestoes \
+#     --from-literal=OM_WEBHOOK_SECRET=... \
+#     --from-literal=GITHUB_APP_ID=... \
+#     --from-file=GITHUB_APP_PRIVATE_KEY=chave-do-app.pem
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: receptor-sugestoes
+  labels: {app: receptor-sugestoes}
+data:
+  # servico do OpenMetadata -> repositorio que recebe a sugestao
+  ROTAS: '{"Cidades": "GovHub-br/data-application-cidades"}'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: receptor-sugestoes
+  labels: {app: receptor-sugestoes}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: receptor-sugestoes}
+  template:
+    metadata:
+      labels: {app: receptor-sugestoes}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: receptor
+          image: ghcr.io/govhub-br/openmetadata-declarative-governance/receptor:latest
+          ports:
+            - {name: http, containerPort: 8080}
+          envFrom:
+            - configMapRef: {name: receptor-sugestoes}
+            - secretRef: {name: receptor-sugestoes}
+          readinessProbe:
+            httpGet: {path: /saude, port: http}
+          livenessProbe:
+            httpGet: {path: /saude, port: http}
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: receptor-sugestoes
+  labels: {app: receptor-sugestoes}
+spec:
+  selector: {app: receptor-sugestoes}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

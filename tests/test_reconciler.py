@@ -269,3 +269,47 @@ def test_policy_com_efeito_invalido_e_recusada(tmp_path: Path) -> None:
     resources = write_resources(tmp_path, policies={"policies": [ruim]})
     with pytest.raises(ValueError, match="allow ou deny"):
         apply_config(read_config(str(resources)), client_for(FakeOpenMetadata()))
+
+
+ALERTA = {
+    "nome": "sugestoes-para-git",
+    "descricao": "Task de sugestao vira PR.",
+    "recursos": ["task"],
+    "destino": {"endpoint": "http://receptor:8080/openmetadata", "segredo": "${SEGREDO_TESTE}"},
+}
+
+
+def test_alerta_criado_com_segredo_e_depois_estavel(
+    om: FakeOpenMetadata, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("SEGREDO_TESTE", "s3gr3do")
+    resources = write_resources(tmp_path, event_subscriptions={"event_subscriptions": [ALERTA]})
+    apply_config(read_config(str(resources)), client_for(om))
+
+    (metodo, endpoint, corpo), = om.mutations
+    assert (metodo, endpoint, corpo["resources"]) == ("POST", "events/subscriptions", ["task"])
+    assert corpo["destinations"][0]["config"]["authType"] == {"type": "bearer", "secretKey": "s3gr3do"}
+
+    om.mutations.clear()
+    apply_config(read_config(str(resources)), client_for(om))
+    assert om.mutations == []
+
+
+def test_trocar_endpoint_reenvia_o_destino(om: FakeOpenMetadata, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("SEGREDO_TESTE", "s3gr3do")
+    resources = write_resources(tmp_path / "a", event_subscriptions={"event_subscriptions": [ALERTA]})
+    apply_config(read_config(str(resources)), client_for(om))
+    om.mutations.clear()
+
+    novo = {**ALERTA, "destino": {**ALERTA["destino"], "endpoint": "http://outro:8080/openmetadata"}}
+    resources = write_resources(tmp_path / "b", event_subscriptions={"event_subscriptions": [novo]})
+    apply_config(read_config(str(resources)), client_for(om))
+    (_, _, ops), = om.mutations
+    assert [op["path"] for op in ops] == ["/destinations"]
+
+
+def test_alerta_sem_segredo_e_recusado(om: FakeOpenMetadata, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("SEGREDO_TESTE", raising=False)
+    resources = write_resources(tmp_path, event_subscriptions={"event_subscriptions": [ALERTA]})
+    with pytest.raises(ValueError, match="precisa de segredo"):
+        apply_config(read_config(str(resources)), client_for(om))

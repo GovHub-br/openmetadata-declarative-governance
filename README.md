@@ -13,6 +13,8 @@ como configuracao versionavel, com comportamento de create/update.
 - `times` / `teams`: times e seus dominios.
 - `users`: usuarios, times, personas e senha inicial/reset.
 - `data_products`: produtos de dados associados a dominios.
+- `event_subscriptions`: alertas com destino webhook (endpoint e segredo por
+  variavel).
 - `policies`: regras de acesso (efeito, recursos, operacoes, condicao).
 - `roles`: conjuntos de policies, dados a time (`papeis_padrao`) ou usuario
   (`papeis`).
@@ -50,6 +52,51 @@ Limites conferidos na instancia 1.13.3 (detalhes em `resources/policies.yml`):
 ativo sem dominio continua visivel (comportamento intencional do
 OpenMetadata), e ate a 1.13.3 o GET da API que nao pede `domains` devolve o
 ativo bloqueado. Este segundo esta corrigido na 1.13.4+.
+
+## Sugestoes do OpenMetadata viram PR
+
+Quem tem o perfil de consumo nao edita descricao direto: sugere por Task. O
+caminho ate o git:
+
+1. a Task de sugestao de descricao dispara o alerta
+   `sugestoes-de-descricao-para-git` (`resources/event_subscriptions.yml`);
+2. o OpenMetadata chama o **receptor** (`receptor/`), assinando o corpo com
+   HMAC (`X-OM-Signature`);
+3. o receptor confere a assinatura, ignora tudo que nao e sugestao de
+   descricao recem-criada, escolhe o repositorio pelo servico do ativo
+   (`ROTAS`) e dispara `repository_dispatch` (`om-sugestao-descricao`) pelo
+   GitHub App;
+4. o workflow do repositorio de destino edita o YAML, abre o PR e, quando o PR
+   fecha, fecha a Task com o link.
+
+O receptor nao guarda estado nem decide nada alem disso. Fica no namespace do
+OpenMetadata, sem Ingress: so o OM o chama, e ele so chama `api.github.com`.
+
+### Implantar
+
+1. **GitHub App** da organizacao, instalado nos repositorios de destino, com
+   permissao de repositorio *Contents: read & write* e *Pull requests: read &
+   write*. Guarde o App ID e gere uma chave privada.
+2. **Imagem**: o workflow `Receptor` publica
+   `ghcr.io/govhub-br/openmetadata-declarative-governance/receptor` a cada
+   mudanca em `receptor/` na main.
+3. **Secret e manifests**, no namespace do OpenMetadata:
+
+   ```bash
+   kubectl -n <ns> create secret generic receptor-sugestoes \
+     --from-literal=OM_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
+     --from-literal=GITHUB_APP_ID=<id> \
+     --from-file=GITHUB_APP_PRIVATE_KEY=chave-do-app.pem
+   kubectl -n <ns> apply -f receptor/deploy/receptor.yaml
+   ```
+
+4. **Alerta**: acrescente ao secret `OM_RESOURCE_ENV` deste repositorio
+   `OM_WEBHOOK_SECRET=<o mesmo do passo 3>` e
+   `RECEPTOR_URL=http://receptor-sugestoes.<ns>.svc.cluster.local:8080/openmetadata`.
+   O proximo apply cria o alerta.
+
+Para ligar outro ministerio, acrescente o servico dele em `ROTAS`
+(`receptor/deploy/receptor.yaml`) e o workflow no repositorio dele.
 
 ## Dominios externos
 

@@ -17,6 +17,7 @@ TYPES = {
     "personas": "persona",
     "roles": "role",
     "policies": "policy",
+    "events/subscriptions": "eventsubscription",
     "dataProducts": "dataProduct",
 }
 
@@ -68,7 +69,12 @@ class FakeOpenMetadata:
 
     # ── interface de requests.Session ─────────────────────────────────────
     def _route(self, url: str) -> list[str]:
-        return [unquote(part) for part in urlparse(url).path.split("/api/v1/", 1)[1].split("/")]
+        parts = [
+            unquote(part) for part in urlparse(url).path.split("/api/v1/", 1)[1].split("/")
+        ]
+        if parts[:2] == ["events", "subscriptions"]:
+            return ["events/subscriptions", *parts[2:]]
+        return parts
 
     def get(self, url: str, params: dict | None = None, timeout: float = 0) -> Response:
         parts = self._route(url)

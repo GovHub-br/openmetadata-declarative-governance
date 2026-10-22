@@ -21,6 +21,12 @@ RESOURCE_FILES = {
     "teams": ("teams.yml", "teams.yaml", "times.yml", "times.yaml"),
     "users": ("users.yml", "users.yaml", "usuarios.yml", "usuarios.yaml"),
     "personas": ("personas.yml", "personas.yaml"),
+    "event_subscriptions": (
+        "event_subscriptions.yml",
+        "event_subscriptions.yaml",
+        "alertas.yml",
+        "alertas.yaml",
+    ),
     "data_products": (
         "data_products.yml",
         "data_products.yaml",
@@ -42,6 +48,7 @@ RESOURCE_KEYS = {
     "teams": ("teams", "times", "time"),
     "users": ("users", "usuarios"),
     "personas": ("personas",),
+    "event_subscriptions": ("event_subscriptions", "alertas"),
     "data_products": (
         "data_products",
         "dataproducts",

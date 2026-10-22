@@ -164,6 +164,80 @@ def create_or_patch_role(item: Mapping[str, Any], client: OpenMetadataClient) ->
     client.put_entity("roles", payload, "role")
 
 
+def webhook_destination(item: Mapping[str, Any]) -> dict[str, Any]:
+    destino = normalized_mapping(get_value(item, ["destination", "destino"]))
+    secret = optional_str(destino, ["secretKey", "secret_key", "segredo"])
+    if not optional_str(destino, ["endpoint"]):
+        raise ValueError(f"alerta {get_value(item, ['name', 'nome'])}: destino sem endpoint.")
+    if not secret:
+        raise ValueError(
+            f"alerta {get_value(item, ['name', 'nome'])}: o destino precisa de "
+            'segredo (use uma variavel, por exemplo "${OM_WEBHOOK_SECRET}").'
+        )
+    return {
+        "category": "External",
+        "type": "Webhook",
+        "timeout": int(get_value(destino, ["timeout"], 10)),
+        "config": {
+            "endpoint": str(get_value(destino, ["endpoint"])),
+            "httpMethod": "POST",
+            "authType": {"type": "bearer", "secretKey": secret},
+        },
+    }
+
+
+def destination_endpoint(subscription: Mapping[str, Any]) -> str | None:
+    for destination in subscription.get("destinations") or []:
+        endpoint = (destination.get("config") or {}).get("endpoint")
+        if endpoint:
+            return str(endpoint)
+    return None
+
+
+def create_or_patch_event_subscription(
+    item: Mapping[str, Any], client: OpenMetadataClient
+) -> None:
+    """Alerta com destino webhook.
+
+    O OpenMetadata nao devolve o segredo do webhook na leitura, entao o diff
+    compara o endpoint; o destino (com o segredo) so e reenviado quando ele
+    muda.
+    """
+    name = str(get_value(item, ["name", "nome"]))
+    payload: dict[str, Any] = {"name": name}
+    display_name = optional_str(item, ["displayName", "display_name", "nome_exibicao"])
+    description = optional_str(item, ["description", "descricao"])
+    if display_name:
+        payload["displayName"] = display_name
+    if description:
+        payload["description"] = description
+    enabled = as_bool(get_value(item, ["enabled", "ativo"], True), True)
+    endpoint = str(
+        get_value(normalized_mapping(get_value(item, ["destination", "destino"])), ["endpoint"])
+    )
+
+    existing = client.get_by_name("event_subscription", name, fields=["destinations"])
+    if existing:
+        mutable = {key: value for key, value in payload.items() if key != "name"}
+        mutable["enabled"] = enabled
+        if destination_endpoint(existing) != endpoint:
+            mutable["destinations"] = [webhook_destination(item)]
+        client.patch_entity("events/subscriptions", existing, mutable, "event_subscription")
+        return
+
+    payload.update(
+        {
+            "alertType": str(get_value(item, ["alertType", "tipo_alerta"], "Notification")),
+            "resources": [str(r) for r in as_list(get_value(item, ["resources", "recursos"]))],
+            "enabled": enabled,
+            "retries": int(get_value(item, ["retries", "tentativas"], 3)),
+            "destinations": [webhook_destination(item)],
+        }
+    )
+    print(f"[event_subscription] criando {name}")
+    client.post_entity("events/subscriptions", payload, "event_subscription")
+
+
 def base_persona_payload(item: Mapping[str, Any]) -> dict[str, Any]:
     payload: dict[str, Any] = {"name": str(get_value(item, ["name", "nome"]))}
     display_name = optional_str(item, ["displayName", "display_name", "nome_exibicao"])
@@ -587,6 +661,11 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
 
     for data_product in data_products:
         create_or_patch_data_product(data_product, client)
+
+    for subscription in get_resource_items(
+        config, ["event_subscriptions", "alertas"], "event_subscription"
+    ):
+        create_or_patch_event_subscription(subscription, client)
 
     return warnings
 

@@ -1,0 +1,28 @@
+name: Receptor
+
+on:
+  push:
+    branches: [main]
+    paths: ["receptor/**", ".github/workflows/receptor.yml"]
+  workflow_dispatch:
+
+jobs:
+  imagem:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: receptor
+          push: true
+          tags: |
+            ghcr.io/govhub-br/openmetadata-declarative-governance/receptor:latest
+            ghcr.io/govhub-br/openmetadata-declarative-governance/receptor:${{ github.sha }}
