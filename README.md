@@ -13,9 +13,16 @@ como configuracao versionavel, com comportamento de create/update.
 - `times` / `teams`: times e seus dominios.
 - `users`: usuarios, times, personas e senha inicial/reset.
 - `data_products`: produtos de dados associados a dominios.
+- `policies`: regras de acesso (efeito, recursos, operacoes, condicao).
+- `roles`: conjuntos de policies, dados a time (`papeis_padrao`) ou usuario
+  (`papeis`).
+
+Policies e roles sao declaradas a mao: o `--export` nao as gera, porque a
+instancia tem as embutidas e as de outros repositorios, que nao sao deste.
 
 O fluxo respeita dependencias entre recursos:
 
+1. cria/atualiza policies, depois roles;
 1. cria/atualiza dominios sem owners/experts;
 2. cria/atualiza personas sem owners;
 3. cria/atualiza times sem owners;
@@ -32,6 +39,25 @@ sao criadas pelos endpoints de criacao/create-or-update da API.
 
 O apply nao remove nada: o que existe na instancia e nao esta no YAML fica
 como esta.
+
+## Perfil de consumo por dominio
+
+O time `mcid-consumidores` da a quem entra nele a role `MCidLeitorDominioRole`:
+ve so os ativos do dominio MCid (subdominios inclusive) e sugere mudanca por
+Task, sem editar direto.
+
+Ao por alguem no time, declare tambem no usuario os dominios do time
+(`MCid` e `MCid.Habitacao`). A pagina do ativo respeita a heranca do time, mas
+a busca do OpenMetadata so considera os dominios diretos e exatos do usuario;
+sem eles a pessoa abre a tabela, mas nao a encontra. A validacao recusa membro
+que nao declara os dominios do time.
+
+Limites conferidos na instancia 1.13.3 (detalhes em `resources/policies.yml`):
+ativo sem dominio continua visivel (comportamento intencional do
+OpenMetadata), e ate a 1.13.3 o GET da API que nao pede `domains` devolve o
+ativo bloqueado. Este segundo esta corrigido na 1.13.4+. A linhagem tambem
+nao respeita o dominio na 1.13.x: o perfil ve nomes e arestas de linhagem de
+outros dominios (sem conseguir abrir os ativos). Corrigido so na 2.0.0+.
 
 ## Dominios externos
 
@@ -266,6 +292,11 @@ As chaves podem ser em portugues ou no formato da API:
 - `confirmar_senha` / `confirmPassword`
 - `padrao` / `default`
 - `papeis` / `roles`
+- `persona_padrao` / `defaultPersona` (usuario; precisa estar em `personas`)
+- `papeis_padrao` / `defaultRoles` (time: role herdada por todos os membros)
+- `politicas` / `policies` (role)
+- `regras` / `rules`, e em cada regra `efeito`, `recursos`, `operacoes`,
+  `condicao`
 - `administrador` / `isAdmin` (so `true` e exportado; para revogar, declare
   `false`)
 

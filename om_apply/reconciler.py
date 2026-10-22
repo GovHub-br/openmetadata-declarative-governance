@@ -10,6 +10,7 @@ from .utils import (
     get_resource_items,
     get_value,
     has_value,
+    normalized_mapping,
     normalize_domain_type,
     normalize_team_type,
     optional_str,
@@ -77,6 +78,90 @@ def domain_patch_payload(
             get_value(item, ["experts", "especialistas"]), "user"
         )
     return payload
+
+
+RULE_FIELDS = ("name", "description", "effect", "resources", "operations", "condition")
+
+
+def normalize_rules(rules: Any) -> list[dict[str, Any]]:
+    """Regras na forma que o OpenMetadata devolve: listas ordenadas, sem vazios.
+
+    O servidor ordena recursos e operacoes ao gravar; sem normalizar, o diff
+    acusaria mudanca a cada execucao.
+    """
+    normalized = []
+    for rule in as_list(rules):
+        normalized.append(
+            {
+                key: sorted(value) if isinstance(value, list) else value
+                for key, value in rule.items()
+                if key in RULE_FIELDS and value not in (None, "", [])
+            }
+        )
+    return normalized
+
+
+def rule_from_item(rule: Mapping[str, Any]) -> dict[str, Any]:
+    rule = normalized_mapping(rule)
+    return {
+        "name": str(get_value(rule, ["name", "nome"])),
+        "description": optional_str(rule, ["description", "descricao"]),
+        "effect": str(get_value(rule, ["effect", "efeito"])).lower(),
+        "resources": [str(r) for r in as_list(get_value(rule, ["resources", "recursos"]))],
+        "operations": [str(o) for o in as_list(get_value(rule, ["operations", "operacoes"]))],
+        "condition": optional_str(rule, ["condition", "condicao"]),
+    }
+
+
+def policy_payload(item: Mapping[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "name": str(get_value(item, ["name", "nome"])),
+        "rules": normalize_rules(
+            [rule_from_item(rule) for rule in as_list(get_value(item, ["rules", "regras"]))]
+        ),
+    }
+    display_name = optional_str(item, ["displayName", "display_name", "nome_exibicao"])
+    description = optional_str(item, ["description", "descricao"])
+    if display_name:
+        payload["displayName"] = display_name
+    if description:
+        payload["description"] = description
+    return payload
+
+
+def create_or_patch_policy(item: Mapping[str, Any], client: OpenMetadataClient) -> None:
+    payload = policy_payload(item)
+    name = payload["name"]
+    existing = client.get_by_name("policy", name, fields=["rules"])
+    if existing:
+        current = {**existing, "rules": normalize_rules(existing.get("rules"))}
+        mutable = {key: value for key, value in payload.items() if key != "name"}
+        client.patch_entity("policies", current, mutable, "policy")
+        return
+    print(f"[policy] criando {name}")
+    client.put_entity("policies", payload, "policy")
+
+
+def create_or_patch_role(item: Mapping[str, Any], client: OpenMetadataClient) -> None:
+    name = str(get_value(item, ["name", "nome"]))
+    policies = as_list(get_value(item, ["policies", "politicas"]))
+    payload: dict[str, Any] = {"name": name}
+    display_name = optional_str(item, ["displayName", "display_name", "nome_exibicao"])
+    description = optional_str(item, ["description", "descricao"])
+    if display_name:
+        payload["displayName"] = display_name
+    if description:
+        payload["description"] = description
+
+    existing = client.get_by_name("role", name, fields=["policies"])
+    if existing:
+        mutable = {key: value for key, value in payload.items() if key != "name"}
+        mutable["policies"] = client.resolve_references(policies, "policy")
+        client.patch_entity("roles", existing, mutable, "role")
+        return
+    payload["policies"] = client.resolve_reference_names(policies, "policy")
+    print(f"[role] criando {name}")
+    client.put_entity("roles", payload, "role")
 
 
 def base_persona_payload(item: Mapping[str, Any]) -> dict[str, Any]:
@@ -158,6 +243,12 @@ def team_payload(
             get_value(item, ["owners", "proprietarios"]), "user"
         )
 
+    default_roles = as_list(
+        get_value(item, ["defaultRoles", "default_roles", "papeis_padrao"], None)
+    )
+    if default_roles:
+        payload["defaultRoles"] = client.resolve_references(default_roles, "role")
+
     return payload
 
 
@@ -219,6 +310,13 @@ def user_payload(
     personas = as_list(get_value(item, ["personas"], None))
     if personas:
         payload["personas"] = client.resolve_references(personas, "persona")
+
+    # A persona padrao e a que a interface usa para montar a tela da pessoa.
+    default_persona = optional_str(
+        item, ["defaultPersona", "default_persona", "persona_padrao"]
+    )
+    if default_persona:
+        payload["defaultPersona"] = client.resolve_reference(default_persona, "persona")
 
     domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
     if domains:
@@ -378,7 +476,9 @@ def create_or_patch_team(
 ) -> None:
     payload = team_payload(item, client, warnings, include_owners=include_owners)
     name = str(payload["name"])
-    existing = client.get_by_name("team", name, fields=["owners", "domains"])
+    existing = client.get_by_name(
+        "team", name, fields=["owners", "domains", "defaultRoles"]
+    )
     if existing:
         mutable_payload = {
             key: value
@@ -392,6 +492,8 @@ def create_or_patch_team(
         client.patch_entity("teams", existing, mutable_payload, "team")
         return
 
+    if "defaultRoles" in payload:
+        payload["defaultRoles"] = [role["id"] for role in payload["defaultRoles"]]
     print(f"[team] criando {name}")
     client.post_entity("teams", payload, "team")
 
@@ -410,7 +512,7 @@ def create_or_patch_user(
     """
     name = user_name(item)
     existing = client.get_by_name(
-        "user", name, fields=["teams", "personas", "domains", "roles"]
+        "user", name, fields=["teams", "personas", "domains", "roles", "defaultPersona"]
     )
     if existing:
         payload = user_payload(item, client, for_patch=True)
@@ -461,6 +563,14 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
         ["data_products", "dataProducts", "produtos_dados", "produtos_de_dados"],
         "data_product",
     )
+
+    # policy antes de role, role antes de time e usuario: cada um referencia
+    # o anterior.
+    for policy in get_resource_items(config, ["policies", "politicas"], "policy"):
+        create_or_patch_policy(policy, client)
+
+    for role in get_resource_items(config, ["roles", "papeis"], "role"):
+        create_or_patch_role(role, client)
 
     for domain in domains:
         create_or_patch_domain(domain, client, include_refs=False)

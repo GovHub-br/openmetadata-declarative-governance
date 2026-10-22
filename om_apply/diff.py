@@ -13,6 +13,9 @@ def reference_ids(value: Any) -> set[str] | None:
 
 
 def same_value(current: Any, desired: Any) -> bool:
+    if isinstance(desired, Mapping) and "id" in desired:
+        # referencia unica (persona padrao, por exemplo): so o id identifica
+        return isinstance(current, Mapping) and current.get("id") == desired["id"]
     desired_ids = reference_ids(desired)
     if desired_ids is not None:
         # Lista de referencias: a ordem e os campos auxiliares (displayName,

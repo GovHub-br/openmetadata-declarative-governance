@@ -16,6 +16,7 @@ TYPES = {
     "users": "user",
     "personas": "persona",
     "roles": "role",
+    "policies": "policy",
     "dataProducts": "dataProduct",
 }
 
@@ -110,7 +111,9 @@ class FakeOpenMetadata:
         for field, endpoint in (("domains", "domains"), ("experts", "users")):
             if field in entity:
                 entity[field] = [self.ref(endpoint, name) for name in entity[field]]
-        for field, endpoint in (("teams", "teams"), ("roles", "roles")):
+        if "policies" in entity:
+            entity["policies"] = [self.ref("policies", name) for name in entity["policies"]]
+        for field, endpoint in (("teams", "teams"), ("roles", "roles"), ("defaultRoles", "roles")):
             if field in entity and entity[field] and isinstance(entity[field][0], str):
                 entity[field] = [
                     self.ref(endpoint, self.by_id(endpoint, i)["fullyQualifiedName"])

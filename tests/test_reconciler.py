@@ -211,6 +211,37 @@ def test_dry_run_nao_imprime_email(om: FakeOpenMetadata, tmp_path: Path, capsys,
     assert "carla@pessoal.com" not in out
 
 
+POLICY_YAML = {
+    "nome": "LeitorPolicy",
+    "descricao": "Le so o dominio.",
+    "regras": [
+        {
+            "nome": "ForaDoDominio",
+            "efeito": "deny",
+            "recursos": ["table", "dashboard"],
+            "operacoes": ["All"],
+            "condicao": "!hasDomain()",
+        },
+        {"nome": "SemEdicao", "efeito": "deny", "recursos": ["table"], "operacoes": ["EditAll", "Delete"]},
+    ],
+}
+
+
+def test_policy_role_e_papel_padrao_criados_na_ordem_e_depois_estaveis(om: FakeOpenMetadata, tmp_path: Path) -> None:
+    resources = write_resources(
+        tmp_path,
+        policies={"policies": [POLICY_YAML]},
+        roles={"roles": [{"nome": "LeitorRole", "politicas": ["LeitorPolicy"]}]},
+        teams={"times": [{"nome": "consumidores", "dominios": ["MCid"], "papeis_padrao": ["LeitorRole"]}]},
+    )
+    apply_config(read_config(str(resources)), client_for(om))
+    assert [(m, ep) for m, ep, _ in om.mutations] == [
+        ("PUT", "policies"),
+        ("PUT", "roles"),
+        ("POST", "teams"),
+    ]
+    assert om.find("teams", "consumidores")["defaultRoles"][0]["name"] == "LeitorRole"
+
 def test_senha_vai_so_na_criacao_e_nunca_no_usuario_existente(
     om: FakeOpenMetadata, tmp_path: Path, monkeypatch
 ) -> None:
@@ -231,6 +262,43 @@ def test_senha_vai_so_na_criacao_e_nunca_no_usuario_existente(
     assert om.mutations == []
 
 
+def test_regra_gravada_em_outra_ordem_nao_gera_diff(om: FakeOpenMetadata, tmp_path: Path) -> None:
+    # o OpenMetadata devolve recursos e operacoes ordenados
+    om.add(
+        "policies",
+        name="LeitorPolicy",
+        description="Le so o dominio.",
+        rules=[
+            {"name": "ForaDoDominio", "effect": "deny", "resources": ["dashboard", "table"],
+             "operations": ["All"], "condition": "!hasDomain()"},
+            {"name": "SemEdicao", "effect": "deny", "resources": ["table"], "operations": ["Delete", "EditAll"]},
+        ],
+    )
+    resources = write_resources(tmp_path, policies={"policies": [POLICY_YAML]})
+    apply_config(read_config(str(resources)), client_for(om))
+    assert om.mutations == []
+
+
+def test_policy_com_efeito_invalido_e_recusada(tmp_path: Path) -> None:
+    ruim = {"nome": "X", "regras": [{"nome": "r", "efeito": "talvez", "recursos": ["table"], "operacoes": ["All"]}]}
+    resources = write_resources(tmp_path, policies={"policies": [ruim]})
+    with pytest.raises(ValueError, match="allow ou deny"):
+        apply_config(read_config(str(resources)), client_for(FakeOpenMetadata()))
+
+
+def test_membro_de_time_com_dominio_declara_os_dominios_do_time(tmp_path: Path) -> None:
+    times = {"times": [{"nome": "consumidores", "dominios": ["MCid", "MCid.Habitacao"]}]}
+    sem = write_resources(tmp_path / "a", teams=times, users={"users": [{"nome": "ana", "times": ["consumidores"], "dominios": ["MCid"]}]})
+    with pytest.raises(ValueError, match=r"membro de consumidores .*MCid\.Habitacao"):
+        apply_config(read_config(str(sem)), client_for(FakeOpenMetadata()))
+
+    com = write_resources(
+        tmp_path / "b",
+        teams=times,
+        users={"users": [{"nome": "ana", "times": ["consumidores"], "dominios": ["MCid", "MCid.Habitacao"]}]},
+    )
+    from om_apply.validation import validate_config_rules
+    validate_config_rules(read_config(str(com)))
 def test_dry_run_nao_imprime_senha(om: FakeOpenMetadata, tmp_path: Path, capsys, monkeypatch) -> None:
     monkeypatch.setenv("CARLA_EMAIL", "carla@x.org")
     monkeypatch.setenv("CARLA_SENHA", "Senha@Forte1")
@@ -239,3 +307,35 @@ def test_dry_run_nao_imprime_senha(om: FakeOpenMetadata, tmp_path: Path, capsys,
     )
     apply_config(read_config(str(resources)), client_for(om, dry_run=True))
     assert "Senha@Forte1" not in capsys.readouterr().out
+
+
+def test_senha_ausente_no_ambiente_nao_reprova_a_validacao(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("SENHA_QUE_NAO_EXISTE", raising=False)
+    resources = write_resources(
+        tmp_path, users={"users": [{"nome": "ana", "senha": "${SENHA_QUE_NAO_EXISTE}"}]}
+    )
+    from om_apply.validation import validate_config_rules
+    validate_config_rules(read_config(str(resources)))
+
+
+def test_persona_padrao_e_aplicada_e_estavel(om: FakeOpenMetadata, tmp_path: Path) -> None:
+    om.add("personas", name="data-consumer", default=False)
+    usuario = {"nome": "beto", "personas": ["data-consumer"], "persona_padrao": "data-consumer"}
+    resources = write_resources(tmp_path, users={"users": [usuario]})
+
+    apply_config(read_config(str(resources)), client_for(om))
+    (_, _, ops), = om.mutations
+    assert sorted(op["path"] for op in ops) == ["/defaultPersona", "/personas"]
+    assert om.find("users", "beto")["defaultPersona"]["name"] == "data-consumer"
+
+    om.mutations.clear()
+    apply_config(read_config(str(resources)), client_for(om))
+    assert om.mutations == []
+
+
+def test_persona_padrao_fora_de_personas_e_recusada(tmp_path: Path) -> None:
+    resources = write_resources(
+        tmp_path, users={"users": [{"nome": "beto", "personas": ["a"], "persona_padrao": "b"}]}
+    )
+    with pytest.raises(ValueError, match="persona padrao b"):
+        apply_config(read_config(str(resources)), client_for(FakeOpenMetadata()))
