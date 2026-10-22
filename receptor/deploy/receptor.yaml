@@ -17,13 +17,16 @@ metadata:
   labels: {app: receptor-sugestoes}
 data:
   # servico do OpenMetadata -> repositorio que recebe a sugestao
-  ROTAS: '{"Cidades": "GovHub-br/data-application-cidades"}'
+  ROTAS: '{"Cidades": "GovHub-br/data-application-cidades", "MinC": "GovHub-br/data-application-minc"}'
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: receptor-sugestoes
   labels: {app: receptor-sugestoes}
+  # o Reloader do cluster reinicia o pod quando o ConfigMap (ROTAS) muda
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 1
   selector:

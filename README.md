@@ -44,12 +44,13 @@ como esta.
 
 ## Perfil de consumo por dominio
 
-O time `mcid-consumidores` da a quem entra nele a role `MCidLeitorDominioRole`:
-ve so os ativos do dominio MCid (subdominios inclusive) e sugere mudanca por
-Task, sem editar direto.
+Os times `mcid-consumidores` e `minc-consumidores` dao a quem entra neles a role
+`ConsumidorDominioRole`: ve so os ativos do dominio do time (subdominios
+inclusive) e sugere mudanca por Task, sem editar direto. A regra e a mesma; o
+dominio vem do time.
 
 Ao por alguem no time, declare tambem no usuario os dominios do time
-(`MCid` e `MCid.Habitacao`). A pagina do ativo respeita a heranca do time, mas
+(no MCid, `MCid` e `MCid.Habitacao`; no MinC, `Cultura` e os cinco subdominios). A pagina do ativo respeita a heranca do time, mas
 a busca do OpenMetadata so considera os dominios diretos e exatos do usuario;
 sem eles a pessoa abre a tabela, mas nao a encontra. A validacao recusa membro
 que nao declara os dominios do time.
@@ -104,7 +105,8 @@ OpenMetadata, sem Ingress: so o OM o chama, e ele so chama `api.github.com`.
    O proximo apply cria o alerta.
 
 Para ligar outro ministerio, acrescente o servico dele em `ROTAS`
-(`receptor/deploy/receptor.yaml`) e o workflow no repositorio dele.
+(`receptor/deploy/receptor.yaml`; o Reloader reinicia o receptor sozinho), instale
+o GitHub App no repositorio dele e copie os workflows `om-sugestao*.yml`.
 
 ## Dominios externos
 
