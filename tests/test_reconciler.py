@@ -313,3 +313,16 @@ def test_alerta_sem_segredo_e_recusado(om: FakeOpenMetadata, tmp_path: Path, mon
     resources = write_resources(tmp_path, event_subscriptions={"event_subscriptions": [ALERTA]})
     with pytest.raises(ValueError, match="precisa de segredo"):
         apply_config(read_config(str(resources)), client_for(om))
+def test_membro_de_time_com_dominio_declara_os_dominios_do_time(tmp_path: Path) -> None:
+    times = {"times": [{"nome": "consumidores", "dominios": ["MCid", "MCid.Habitacao"]}]}
+    sem = write_resources(tmp_path / "a", teams=times, users={"users": [{"nome": "ana", "times": ["consumidores"], "dominios": ["MCid"]}]})
+    with pytest.raises(ValueError, match=r"membro de consumidores .*MCid\.Habitacao"):
+        apply_config(read_config(str(sem)), client_for(FakeOpenMetadata()))
+
+    com = write_resources(
+        tmp_path / "b",
+        teams=times,
+        users={"users": [{"nome": "ana", "times": ["consumidores"], "dominios": ["MCid", "MCid.Habitacao"]}]},
+    )
+    from om_apply.validation import validate_config_rules
+    validate_config_rules(read_config(str(com)))

@@ -84,6 +84,28 @@ def validate_config_rules(config: dict[str, Any]) -> None:
                     "repositorio (dominios_externos)."
                 )
 
+    # A busca do OpenMetadata so enxerga os dominios diretos e exatos do
+    # usuario: membro de time com dominio que nao os declara no proprio
+    # usuario ve o ativo pela pagina, mas nao o encontra na busca.
+    teams = get_resource_items(config, ["teams", "times", "time"], "team")
+    team_domains = {
+        str(get_value(team, ["name", "nome"])): {
+            str(d) for d in as_list(get_value(team, ["domains", "dominios"], None))
+        }
+        for team in teams
+    }
+    for user in users:
+        name = get_value(user, ["name", "nome"], "<sem nome>")
+        declared = {str(d) for d in as_list(get_value(user, ["domains", "dominios"], None))}
+        for team in as_list(get_value(user, ["teams", "times"], None)):
+            missing = sorted(team_domains.get(str(team), set()) - declared)
+            if missing:
+                errors.append(
+                    f"user {name}: membro de {team} precisa declarar tambem os "
+                    f"dominios do time ({', '.join(missing)}); a busca do "
+                    "OpenMetadata so considera os dominios diretos do usuario."
+                )
+
     for domain in domains:
         if has_value(domain, ["owners", "proprietarios"]):
             name = get_value(domain, ["name", "nome"], "<sem nome>")

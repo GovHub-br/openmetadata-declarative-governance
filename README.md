@@ -46,7 +46,13 @@ como esta.
 
 O time `mcid-consumidores` da a quem entra nele a role `MCidLeitorDominioRole`:
 ve so os ativos do dominio MCid (subdominios inclusive) e sugere mudanca por
-Task, sem editar direto. Basta por a pessoa no time; o dominio vem dele.
+Task, sem editar direto.
+
+Ao por alguem no time, declare tambem no usuario os dominios do time
+(`MCid` e `MCid.Habitacao`). A pagina do ativo respeita a heranca do time, mas
+a busca do OpenMetadata so considera os dominios diretos e exatos do usuario;
+sem eles a pessoa abre a tabela, mas nao a encontra. A validacao recusa membro
+que nao declara os dominios do time.
 
 Limites conferidos na instancia 1.13.3 (detalhes em `resources/policies.yml`):
 ativo sem dominio continua visivel (comportamento intencional do
