@@ -6,7 +6,8 @@ from urllib.parse import quote
 
 import requests
 
-from .audit import AuditLogger
+from .audit import AuditLogger, redact
+from .diff import patch_operations
 from .errors import OpenMetadataError
 from .utils import (
     ENTITY_ENDPOINTS,
@@ -41,6 +42,7 @@ class OpenMetadataClient:
             }
         )
         self.cache: dict[tuple[str, str], dict[str, Any]] = {}
+        self.counts = {"criados": 0, "atualizados": 0, "sem_mudanca": 0}
 
     def remember(self, entity_type: str, entity: Mapping[str, Any]) -> None:
         for key in ("fullyQualifiedName", "name", "displayName"):
@@ -60,7 +62,7 @@ class OpenMetadataClient:
         if self.dry_run and method in {"POST", "PUT", "PATCH"}:
             print(f"DRY-RUN {method} {path}")
             if payload is not None:
-                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+                print(json.dumps(redact(payload), ensure_ascii=False, indent=2, sort_keys=True))
             name = str(payload.get("name", "dry-run")) if payload else "dry-run"
             return {
                 "id": f"dry-run-{normalize_key(name)}",
@@ -97,8 +99,11 @@ class OpenMetadataClient:
         fqn: str,
         fields: Iterable[str] | None = None,
     ) -> dict[str, Any] | None:
+        # Com `fields`, quem chama vai comparar esses campos com o YAML: uma
+        # entidade em cache, buscada antes sem eles, faria o diff enxergar
+        # times/dominios vazios e reescreve-los.
         cached = self.cache.get((entity_type, fqn))
-        if cached:
+        if cached and not fields:
             return cached
 
         endpoint = ENTITY_ENDPOINTS.get(entity_type)
@@ -108,8 +113,6 @@ class OpenMetadataClient:
         query = ""
         if fields:
             query = f"?fields={','.join(fields)}"
-        if self.dry_run:
-            return None
 
         response = self.session.get(
             f"{self.api_url}/{endpoint}/name/{quote(fqn, safe='')}{query}",
@@ -140,27 +143,9 @@ class OpenMetadataClient:
         endpoint = ENTITY_ENDPOINTS.get(entity_type)
         if not endpoint:
             raise ValueError(f"Tipo de referencia nao suportado: {entity_type}")
-        if self.dry_run:
-            return None
-
-        response = self.session.get(
-            f"{self.api_url}/{endpoint}?limit=100",
-            timeout=self.timeout,
-        )
-        if response.status_code != 200:
-            self.audit.api_error(
-                method="GET",
-                path=f"/{endpoint}",
-                status_code=response.status_code,
-                response_body=response.text,
-            )
-            raise OpenMetadataError(
-                f"GET /{endpoint} retornou {response.status_code}: "
-                f"{response.text[:1200]}"
-            )
 
         expected = str(name_or_display_name)
-        for entity in response.json().get("data", []):
+        for entity in self.list_entities(endpoint):
             candidates = {
                 str(entity.get("name", "")),
                 str(entity.get("fullyQualifiedName", "")),
@@ -171,17 +156,45 @@ class OpenMetadataClient:
                 return entity
         return None
 
+    def list_entities(
+        self,
+        endpoint: str,
+        fields: Iterable[str] | None = None,
+        params: Mapping[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Todas as entidades do endpoint, seguindo a paginacao por cursor."""
+        query: dict[str, str] = {"limit": "100", **(params or {})}
+        if fields:
+            query["fields"] = ",".join(fields)
+        entities: list[dict[str, Any]] = []
+        while True:
+            response = self.session.get(
+                f"{self.api_url}/{endpoint}", params=query, timeout=self.timeout
+            )
+            if response.status_code != 200:
+                self.audit.api_error(
+                    method="GET",
+                    path=f"/{endpoint}",
+                    status_code=response.status_code,
+                    response_body=response.text,
+                )
+                raise OpenMetadataError(
+                    f"GET /{endpoint} retornou {response.status_code}: "
+                    f"{response.text[:1200]}"
+                )
+            body = response.json()
+            entities.extend(body.get("data", []))
+            after = (body.get("paging") or {}).get("after")
+            if not after:
+                return entities
+            query["after"] = after
+
     def resolve_reference(self, value: Any, default_type: str) -> dict[str, Any]:
         spec = parse_reference(value, default_type)
+        # Sem placeholder no dry-run: o que o apply nao acharia, o dry-run
+        # tambem nao acha. Entidades criadas no proprio dry-run ja estao no
+        # cache, entao referencias a elas resolvem.
         entity = self.get_by_name(spec.entity_type, spec.name)
-        if not entity and self.dry_run:
-            entity = {
-                "id": f"dry-run-{spec.entity_type}-{normalize_key(spec.name)}",
-                "type": spec.entity_type,
-                "name": spec.name,
-                "fullyQualifiedName": spec.name,
-            }
-            self.remember(spec.entity_type, entity)
         if not entity:
             raise OpenMetadataError(
                 f"Referencia nao encontrada: {spec.entity_type}:{spec.name}"
@@ -213,6 +226,7 @@ class OpenMetadataClient:
     ) -> dict[str, Any]:
         entity = self.request("PUT", f"/{endpoint}", payload=payload)
         self.remember(entity_type, entity)
+        self.counts["criados"] += 1
         return entity
 
     def post_entity(
@@ -220,25 +234,35 @@ class OpenMetadataClient:
     ) -> dict[str, Any]:
         entity = self.request("POST", f"/{endpoint}", payload=payload)
         self.remember(entity_type, entity)
+        self.counts["criados"] += 1
         return entity
 
     def patch_entity(
         self,
         endpoint: str,
-        entity_id: str,
-        payload: Mapping[str, Any],
+        existing: Mapping[str, Any],
+        desired: Mapping[str, Any],
         entity_type: str,
     ) -> dict[str, Any]:
-        path = f"/{endpoint}/{quote(entity_id, safe='')}"
+        """Envia so os campos que diferem; sem diferenca, nao chama a API."""
+        label = f"[{entity_type}] {existing.get('name')}"
+        json_patch = patch_operations(existing, desired)
+        if not json_patch:
+            print(f"{label}: sem mudancas")
+            self.counts["sem_mudanca"] += 1
+            return dict(existing)
+
+        changed = ", ".join(op["path"].lstrip("/") for op in json_patch)
+        print(f"{label}: atualizando {changed}")
+        self.counts["atualizados"] += 1
+        path = f"/{endpoint}/{quote(str(existing['id']), safe='')}"
         if self.dry_run:
-            entity = self.request("PATCH", path, payload=payload)
+            print(f"DRY-RUN PATCH {path}")
+            print(json.dumps(json_patch, ensure_ascii=False, indent=2, sort_keys=True))
+            entity = {**existing, **desired}
             self.remember(entity_type, entity)
             return entity
 
-        json_patch = [
-            {"op": "add", "path": f"/{key}", "value": value}
-            for key, value in payload.items()
-        ]
         response = self.session.patch(
             f"{self.api_url}{path}",
             json=json_patch,

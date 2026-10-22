@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
+# `email` tambem: a saida do dry-run vira comentario de PR num repositorio
+# publico.
 SENSITIVE_KEYS = {
+    "email",
     "password",
     "confirmpassword",
     "newpassword",

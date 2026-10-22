@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: pytest -q
+      - name: Validar resources
+        run: python om_apply.py --file resources --validate-only
+
+  # Dry-run contra a instancia: mostra no PR o que o merge vai mudar. So roda
+  # em PR do proprio repositorio, porque PR de fork nao recebe os secrets.
+  plano:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: testes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Variaveis dos resources
+        env:
+          RESOURCE_ENV: ${{ secrets.OM_RESOURCE_ENV }}
+        run: |
+          printf '%s\n' "$RESOURCE_ENV" | while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::add-mask::${line#*=}"
+            echo "$line" >> "$GITHUB_ENV"
+          done
+
+      - name: Dry-run
+        id: plano
+        env:
+          OM_HOST: ${{ vars.OM_HOST }}
+          OM_TOKEN: ${{ secrets.OM_TOKEN }}
+        run: |
+          set -o pipefail
+          python om_apply.py --file resources --dry-run 2>&1 | tee plano.txt
+
+      - name: Comentar o plano no PR
+        if: always() && steps.plano.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RESULTADO: ${{ steps.plano.outcome }}
+        run: |
+          marker='<!-- om-apply-plano -->'
+          {
+            echo "$marker"
+            echo "### Plano do OpenMetadata (dry-run: $RESULTADO)"
+            echo
+            echo '```'
+            grep -v ': sem mudancas$' plano.txt | tail -c 60000
+            echo '```'
+          } > comentario.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comentario.md
+          else
+            gh pr comment "$PR" --body-file comentario.md
+          fi

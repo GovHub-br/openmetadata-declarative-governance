@@ -47,6 +47,28 @@ def validate_config_rules(config: dict[str, Any]) -> None:
     )
 
     errors: list[str] = []
+    external = {str(name) for name in config.get("dominios_externos") or []}
+    for domain in domains:
+        name = str(get_value(domain, ["name", "nome"], "<sem nome>"))
+        parent = get_value(domain, ["parent", "parentDomain", "dominio_pai"], None)
+        root = str(parent or name).split(".", 1)[0]
+        if root in external:
+            errors.append(
+                f"domain {name}: a hierarquia {root} e mantida por outro "
+                "repositorio (dominios_externos); aqui ela so pode ser referenciada."
+            )
+
+    for data_product in data_products:
+        name = str(get_value(data_product, ["name", "nome"], "<sem nome>"))
+        for domain in as_list(
+            get_value(data_product, ["domain", "dominio", "domains", "dominios"], None)
+        ):
+            if str(domain).split(".", 1)[0] in external:
+                errors.append(
+                    f"data_product {name}: o dominio {domain} e mantido por outro "
+                    "repositorio (dominios_externos)."
+                )
+
     for domain in domains:
         if has_value(domain, ["owners", "proprietarios"]):
             name = get_value(domain, ["name", "nome"], "<sem nome>")
@@ -69,13 +91,10 @@ def validate_config_rules(config: dict[str, Any]) -> None:
     for persona in personas:
         if has_value(persona, ["owners", "proprietarios"]):
             name = get_value(persona, ["name", "nome"], "<sem nome>")
-            error = validate_owner_specs(
-                get_value(persona, ["owners", "proprietarios"]),
-                "user",
-                f"persona {name}",
+            errors.append(
+                f"persona {name}: persona nao tem proprietarios no OpenMetadata "
+                "(a API recusa o campo owners)."
             )
-            if error:
-                errors.append(error)
 
     for data_product in data_products:
         if has_value(data_product, ["owners", "proprietarios"]):

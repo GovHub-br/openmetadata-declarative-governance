@@ -29,6 +29,10 @@ RESOURCE_FILES = {
     ),
 }
 
+#: Dominios cuja hierarquia e mantida por outro repositorio (o sync de
+#: governanca de cada ministerio). Aqui eles so podem ser referenciados.
+EXTERNAL_DOMAINS_KEY = "dominios_externos"
+
 RESOURCE_KEYS = {
     "domains": ("domains", "dominios"),
     "teams": ("teams", "times", "time"),
@@ -92,7 +96,16 @@ def read_config_directory(path: Path) -> dict[str, Any]:
             merged[resource_key] = []
             continue
         merged[resource_key] = read_resource_file(resource_file, resource_key)
+        if resource_key == "domains":
+            merged[EXTERNAL_DOMAINS_KEY] = read_external_domains(resource_file)
     return normalized_mapping(expand_env_values(merged))
+
+
+def read_external_domains(path: Path) -> list[str]:
+    data = read_yaml_file(path)
+    if not isinstance(data, Mapping):
+        return []
+    return [str(name) for name in normalized_mapping(data).get(EXTERNAL_DOMAINS_KEY) or []]
 
 
 def read_resource_file(path: Path, resource_key: str) -> list[Any]:
