@@ -358,3 +358,26 @@ def test_senha_ausente_no_ambiente_nao_reprova_a_validacao(tmp_path: Path, monke
     )
     from om_apply.validation import validate_config_rules
     validate_config_rules(read_config(str(resources)))
+
+
+def test_persona_padrao_e_aplicada_e_estavel(om: FakeOpenMetadata, tmp_path: Path) -> None:
+    om.add("personas", name="data-consumer", default=False)
+    usuario = {"nome": "beto", "personas": ["data-consumer"], "persona_padrao": "data-consumer"}
+    resources = write_resources(tmp_path, users={"users": [usuario]})
+
+    apply_config(read_config(str(resources)), client_for(om))
+    (_, _, ops), = om.mutations
+    assert sorted(op["path"] for op in ops) == ["/defaultPersona", "/personas"]
+    assert om.find("users", "beto")["defaultPersona"]["name"] == "data-consumer"
+
+    om.mutations.clear()
+    apply_config(read_config(str(resources)), client_for(om))
+    assert om.mutations == []
+
+
+def test_persona_padrao_fora_de_personas_e_recusada(tmp_path: Path) -> None:
+    resources = write_resources(
+        tmp_path, users={"users": [{"nome": "beto", "personas": ["a"], "persona_padrao": "b"}]}
+    )
+    with pytest.raises(ValueError, match="persona padrao b"):
+        apply_config(read_config(str(resources)), client_for(FakeOpenMetadata()))

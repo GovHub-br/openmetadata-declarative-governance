@@ -385,6 +385,13 @@ def user_payload(
     if personas:
         payload["personas"] = client.resolve_references(personas, "persona")
 
+    # A persona padrao e a que a interface usa para montar a tela da pessoa.
+    default_persona = optional_str(
+        item, ["defaultPersona", "default_persona", "persona_padrao"]
+    )
+    if default_persona:
+        payload["defaultPersona"] = client.resolve_reference(default_persona, "persona")
+
     domains = as_list(get_value(item, ["domain", "dominio", "domains", "dominios"], None))
     if domains:
         if for_patch:
@@ -579,7 +586,7 @@ def create_or_patch_user(
     """
     name = user_name(item)
     existing = client.get_by_name(
-        "user", name, fields=["teams", "personas", "domains", "roles"]
+        "user", name, fields=["teams", "personas", "domains", "roles", "defaultPersona"]
     )
     if existing:
         payload = user_payload(item, client, for_patch=True)

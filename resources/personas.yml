@@ -4,6 +4,13 @@
 # Persona nao tem proprietarios no OpenMetadata.
 
 personas:
+- nome: data-consumer
+  nome_exibicao: Consumidor(a) de Dados
+  descricao: >-
+    Usa os dados do seu domínio para análise e decisão e ajuda a melhorar o catálogo:
+    não edita direto, sugere alterações de descrição por Task, que viram PR para
+    revisão do time de engenharia de dados.
+  padrao: false
 - nome: data-engineer
   nome_exibicao: Engenheiro(a) de Dados
   descricao: Responsável pelo desenvolvimento e manutenção de pipelines, modelos dbt, integrações
