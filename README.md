@@ -281,6 +281,26 @@ Configuracao no GitHub:
 | secret | `OM_RESOURCE_ENV` | variaveis usadas nos YAMLs, uma `CHAVE=valor` por linha |
 | environment | `openmetadata` | onde o apply roda; pode exigir aprovacao |
 
+### Bot do CI
+
+O CI aplica com o bot `govhub-governanca-bot`, e nao com um usuario pessoal.
+Ele tem uma unica role, `GovernancaComoCodigoRole`, cuja policy
+`GovernancaComoCodigoPolicy` libera todas as operacoes **so** nos recursos que
+este reconciler gerencia (team, user, persona, domain, dataProduct, role,
+policy, eventsubscription). Nao alcanca ativo de dados.
+
+Nao confundir com o `governance-bot`, que e embutido do OpenMetadata e roda os
+Governance Workflows.
+
+Ao criar um bot, o OpenMetadata acrescenta a `DefaultBotRole`, que **nega
+`EditDisplayName` em tudo** (negacao vence permissao). Ela foi retirada deste
+bot; sem isso, mudar um `nome_exibicao` no YAML quebraria o apply. Se o bot
+for recriado, retire-a de novo.
+
+Para trocar o token: no OpenMetadata, Settings > Bots >
+`govhub-governanca-bot` > revogar e gerar novo; depois
+`gh secret set OM_TOKEN` neste repositorio.
+
 ## Desenvolvimento
 
 ```bash
