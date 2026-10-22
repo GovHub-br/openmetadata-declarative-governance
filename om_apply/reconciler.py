@@ -164,16 +164,20 @@ def create_or_patch_role(item: Mapping[str, Any], client: OpenMetadataClient) ->
     client.put_entity("roles", payload, "role")
 
 
+def missing_destination_config(item: Mapping[str, Any]) -> list[str]:
+    """O que falta para montar o destino: endpoint e segredo vem do ambiente."""
+    destino = normalized_mapping(get_value(item, ["destination", "destino"]))
+    missing = []
+    if not optional_str(destino, ["endpoint"]):
+        missing.append("endpoint")
+    if not optional_str(destino, ["secretKey", "secret_key", "segredo"]):
+        missing.append("segredo")
+    return missing
+
+
 def webhook_destination(item: Mapping[str, Any]) -> dict[str, Any]:
     destino = normalized_mapping(get_value(item, ["destination", "destino"]))
     secret = optional_str(destino, ["secretKey", "secret_key", "segredo"])
-    if not optional_str(destino, ["endpoint"]):
-        raise ValueError(f"alerta {get_value(item, ['name', 'nome'])}: destino sem endpoint.")
-    if not secret:
-        raise ValueError(
-            f"alerta {get_value(item, ['name', 'nome'])}: o destino precisa de "
-            'segredo (use uma variavel, por exemplo "${OM_WEBHOOK_SECRET}").'
-        )
     return {
         "category": "External",
         "type": "Webhook",
@@ -195,13 +199,17 @@ def destination_endpoint(subscription: Mapping[str, Any]) -> str | None:
 
 
 def create_or_patch_event_subscription(
-    item: Mapping[str, Any], client: OpenMetadataClient
+    item: Mapping[str, Any], client: OpenMetadataClient, warnings: list[str]
 ) -> None:
     """Alerta com destino webhook.
 
     O OpenMetadata nao devolve o segredo do webhook na leitura, entao o diff
     compara o endpoint; o destino (com o segredo) so e reenviado quando ele
     muda.
+
+    Endpoint e segredo vem do ambiente. Enquanto faltarem (o receptor ainda nao
+    esta implantado, por exemplo), o alerta nao e criado nem tem o destino
+    trocado: vira aviso, e o resto do apply segue.
     """
     name = str(get_value(item, ["name", "nome"]))
     payload: dict[str, Any] = {"name": name}
@@ -216,13 +224,26 @@ def create_or_patch_event_subscription(
         get_value(normalized_mapping(get_value(item, ["destination", "destino"])), ["endpoint"])
     )
 
+    missing = missing_destination_config(item)
+    pending = (
+        f"alerta {name}: destino sem {' e '.join(missing)} no ambiente "
+        "(ver event_subscriptions.yml); "
+    )
+
     existing = client.get_by_name("event_subscription", name, fields=["destinations"])
     if existing:
         mutable = {key: value for key, value in payload.items() if key != "name"}
         mutable["enabled"] = enabled
         if destination_endpoint(existing) != endpoint:
-            mutable["destinations"] = [webhook_destination(item)]
+            if missing:
+                warnings.append(pending + "o destino atual foi mantido.")
+            else:
+                mutable["destinations"] = [webhook_destination(item)]
         client.patch_entity("events/subscriptions", existing, mutable, "event_subscription")
+        return
+
+    if missing:
+        warnings.append(pending + "o alerta sera criado quando elas existirem.")
         return
 
     payload.update(
@@ -673,7 +694,7 @@ def apply_config(config: dict[str, Any], client: OpenMetadataClient) -> list[str
     for subscription in get_resource_items(
         config, ["event_subscriptions", "alertas"], "event_subscription"
     ):
-        create_or_patch_event_subscription(subscription, client)
+        create_or_patch_event_subscription(subscription, client, warnings)
 
     return warnings
 

@@ -323,11 +323,23 @@ def test_trocar_endpoint_reenvia_o_destino(om: FakeOpenMetadata, tmp_path: Path,
     assert [op["path"] for op in ops] == ["/destinations"]
 
 
-def test_alerta_sem_segredo_e_recusado(om: FakeOpenMetadata, tmp_path: Path, monkeypatch) -> None:
+def test_alerta_sem_configuracao_vira_aviso_e_nao_trava_o_apply(
+    om: FakeOpenMetadata, tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.delenv("SEGREDO_TESTE", raising=False)
-    resources = write_resources(tmp_path, event_subscriptions={"event_subscriptions": [ALERTA]})
-    with pytest.raises(ValueError, match="precisa de segredo"):
-        apply_config(read_config(str(resources)), client_for(om))
+    sem_endpoint = {**ALERTA, "destino": {"endpoint": "${URL_QUE_NAO_EXISTE}", "segredo": "${SEGREDO_TESTE}"}}
+    resources = write_resources(
+        tmp_path,
+        event_subscriptions={"event_subscriptions": [sem_endpoint]},
+        domains={"domains": [{"nome": "contratos", "descricao": "Outra."}]},
+    )
+    avisos = apply_config(read_config(str(resources)), client_for(om))
+
+    assert [(m, ep) for m, ep, _ in om.mutations] == [("PATCH", "domains")]
+    assert avisos == [
+        "alerta sugestoes-para-git: destino sem endpoint e segredo no ambiente "
+        "(ver event_subscriptions.yml); o alerta sera criado quando elas existirem."
+    ]
 def test_membro_de_time_com_dominio_declara_os_dominios_do_time(tmp_path: Path) -> None:
     times = {"times": [{"nome": "consumidores", "dominios": ["MCid", "MCid.Habitacao"]}]}
     sem = write_resources(tmp_path / "a", teams=times, users={"users": [{"nome": "ana", "times": ["consumidores"], "dominios": ["MCid"]}]})
