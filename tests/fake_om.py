@@ -104,10 +104,6 @@ class FakeOpenMetadata:
             entity[op["path"].lstrip("/")] = op["value"]
         return Response(200, copy.deepcopy(entity))
 
-    def put(self, url: str, json: Any = None, timeout: float = 0) -> Response:
-        self.mutations.append(("PUT", "users/changePassword", None))
-        return Response(200, {})
-
     def _as_entity(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Payload de criacao usa nomes/ids; a entidade guarda referencias."""
         entity = dict(payload)

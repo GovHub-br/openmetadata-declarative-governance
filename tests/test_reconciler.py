@@ -209,3 +209,33 @@ def test_dry_run_nao_imprime_email(om: FakeOpenMetadata, tmp_path: Path, capsys,
     out = capsys.readouterr().out
     assert "[user] criando carla" in out
     assert "carla@pessoal.com" not in out
+
+
+def test_senha_vai_so_na_criacao_e_nunca_no_usuario_existente(
+    om: FakeOpenMetadata, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("CARLA_EMAIL", "carla@x.org")
+    monkeypatch.setenv("CARLA_SENHA", "Senha@Forte1")
+    usuario = {"nome": "carla", "email": "${CARLA_EMAIL}", "senha": "${CARLA_SENHA}"}
+    resources = write_resources(tmp_path, users={"users": [usuario]})
+
+    apply_config(read_config(str(resources)), client_for(om))
+    (metodo, endpoint, corpo), = om.mutations
+    assert (metodo, endpoint) == ("POST", "users")
+    assert corpo["createPasswordType"] == "ADMIN_CREATE"
+    assert corpo["password"] == corpo["confirmPassword"] == "Senha@Forte1"
+
+    # reaplicar o YAML nao reseta a senha que a pessoa ja trocou
+    om.mutations.clear()
+    apply_config(read_config(str(resources)), client_for(om))
+    assert om.mutations == []
+
+
+def test_dry_run_nao_imprime_senha(om: FakeOpenMetadata, tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.setenv("CARLA_EMAIL", "carla@x.org")
+    monkeypatch.setenv("CARLA_SENHA", "Senha@Forte1")
+    resources = write_resources(
+        tmp_path, users={"users": [{"nome": "carla", "email": "${CARLA_EMAIL}", "senha": "${CARLA_SENHA}"}]}
+    )
+    apply_config(read_config(str(resources)), client_for(om, dry_run=True))
+    assert "Senha@Forte1" not in capsys.readouterr().out
