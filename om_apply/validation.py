@@ -118,6 +118,18 @@ def validate_config_rules(config: dict[str, Any]) -> None:
                 errors.append(error)
 
     for user in users:
+        default_persona = get_value(
+            user, ["defaultPersona", "default_persona", "persona_padrao"], None
+        )
+        if default_persona and str(default_persona) not in {
+            str(p) for p in as_list(get_value(user, ["personas"], None))
+        }:
+            errors.append(
+                f"user {get_value(user, ['name', 'nome'], '<sem nome>')}: a persona "
+                f"padrao {default_persona} precisa estar tambem em `personas`."
+            )
+
+    for user in users:
         password = str(get_value(user, ["password", "senha"], "") or "")
         # Senha vazia e normal: a variavel so existe no ambiente na hora de
         # criar o usuario, e depois disso a senha nunca mais e aplicada.

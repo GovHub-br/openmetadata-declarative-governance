@@ -55,7 +55,9 @@ que nao declara os dominios do time.
 Limites conferidos na instancia 1.13.3 (detalhes em `resources/policies.yml`):
 ativo sem dominio continua visivel (comportamento intencional do
 OpenMetadata), e ate a 1.13.3 o GET da API que nao pede `domains` devolve o
-ativo bloqueado. Este segundo esta corrigido na 1.13.4+.
+ativo bloqueado. Este segundo esta corrigido na 1.13.4+. A linhagem tambem
+nao respeita o dominio na 1.13.x: o perfil ve nomes e arestas de linhagem de
+outros dominios (sem conseguir abrir os ativos). Corrigido so na 2.0.0+.
 
 ## Dominios externos
 
@@ -290,6 +292,7 @@ As chaves podem ser em portugues ou no formato da API:
 - `confirmar_senha` / `confirmPassword`
 - `padrao` / `default`
 - `papeis` / `roles`
+- `persona_padrao` / `defaultPersona` (usuario; precisa estar em `personas`)
 - `papeis_padrao` / `defaultRoles` (time: role herdada por todos os membros)
 - `politicas` / `policies` (role)
 - `regras` / `rules`, e em cada regra `efeito`, `recursos`, `operacoes`,

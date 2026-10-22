@@ -159,7 +159,7 @@ def export_users(client: OpenMetadataClient) -> list[dict[str, Any]]:
     exported = []
     users = client.list_entities(
         "users",
-        fields=["teams", "personas", "roles", "domains"],
+        fields=["teams", "personas", "roles", "domains", "defaultPersona"],
         params={"isBot": "false"},
     )
     for user in users:
@@ -174,6 +174,8 @@ def export_users(client: OpenMetadataClient) -> list[dict[str, Any]]:
             entry["times"] = ref_list(teams, "team")
         if user.get("personas"):
             entry["personas"] = ref_list(user["personas"], "persona")
+        if user.get("defaultPersona"):
+            entry["persona_padrao"] = ref_name(user["defaultPersona"])
         if user.get("roles"):
             entry["papeis"] = ref_list(user["roles"], "role")
         if user.get("domains"):
