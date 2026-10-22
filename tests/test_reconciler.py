@@ -307,3 +307,12 @@ def test_dry_run_nao_imprime_senha(om: FakeOpenMetadata, tmp_path: Path, capsys,
     )
     apply_config(read_config(str(resources)), client_for(om, dry_run=True))
     assert "Senha@Forte1" not in capsys.readouterr().out
+
+
+def test_senha_ausente_no_ambiente_nao_reprova_a_validacao(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("SENHA_QUE_NAO_EXISTE", raising=False)
+    resources = write_resources(
+        tmp_path, users={"users": [{"nome": "ana", "senha": "${SENHA_QUE_NAO_EXISTE}"}]}
+    )
+    from om_apply.validation import validate_config_rules
+    validate_config_rules(read_config(str(resources)))

@@ -118,9 +118,11 @@ def validate_config_rules(config: dict[str, Any]) -> None:
                 errors.append(error)
 
     for user in users:
-        if has_value(user, ["password", "senha"]):
+        password = str(get_value(user, ["password", "senha"], "") or "")
+        # Senha vazia e normal: a variavel so existe no ambiente na hora de
+        # criar o usuario, e depois disso a senha nunca mais e aplicada.
+        if password:
             name = get_value(user, ["name", "nome"], "<sem nome>")
-            password = str(get_value(user, ["password", "senha"]))
             error = validate_password_spec(password, f"user {name}")
             if error:
                 errors.append(error)

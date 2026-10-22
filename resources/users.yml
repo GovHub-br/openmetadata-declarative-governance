@@ -103,6 +103,18 @@ users:
   dominios:
   - Cultura
   - MCid
+- nome: mcid-homologacao
+  nome_exibicao: MCid - Homologação
+  descricao: >-
+    Conta compartilhada para o Ministério das Cidades testar o perfil de consumo:
+    vê só o domínio MCid e sugere mudanças por Task, sem editar direto.
+  email: ${USER_MCID_HOMOLOGACAO_EMAIL}
+  senha: ${USER_MCID_HOMOLOGACAO_SENHA}
+  times:
+  - mcid-consumidores
+  dominios:
+  - MCid
+  - MCid.Habitacao
 - nome: mateusdecastro
   nome_exibicao: Mateus de Castro
   times:
