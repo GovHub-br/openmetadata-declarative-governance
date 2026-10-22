@@ -118,6 +118,25 @@ users:
   dominios:
   - MCid
   - MCid.Habitacao
+- nome: minc-homologacao
+  nome_exibicao: MinC - Homologação
+  descricao: >-
+    Conta compartilhada para o Ministério da Cultura testar o perfil de consumo:
+    vê só o domínio Cultura e sugere mudanças por Task, sem editar direto.
+  email: ${USER_MINC_HOMOLOGACAO_EMAIL}
+  senha: ${USER_MINC_HOMOLOGACAO_SENHA}
+  times:
+  - minc-consumidores
+  personas:
+  - data-consumer
+  persona_padrao: data-consumer
+  dominios:
+  - Cultura
+  - Cultura.Cadastro Cultural
+  - Cultura.Fomento Direto
+  - Cultura.Incentivo Fiscal
+  - Cultura.Indicadores
+  - Cultura.Repasse Federativo
 - nome: mateusdecastro
   nome_exibicao: Mateus de Castro
   times:
