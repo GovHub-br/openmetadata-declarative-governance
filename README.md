@@ -129,7 +129,12 @@ users:
 ```
 
 No CI essas variaveis vem do secret `OM_RESOURCE_ENV` (uma linha
-`CHAVE=valor` por variavel). A saida do dry-run e o log de auditoria mascaram
+`CHAVE=valor` por variavel).
+
+A senha e so a **inicial**: vai no proprio pedido de criacao e nunca mais e
+aplicada. Reaplicar o YAML nao reseta a senha que a pessoa trocou; para
+redefinir, use a interface do OpenMetadata. Depois de criado o usuario, as
+variaveis de e-mail e senha dele podem sair do `OM_RESOURCE_ENV`. A saida do dry-run e o log de auditoria mascaram
 `email`, `password` e `token`.
 
 ## Exportar o estado da instancia
