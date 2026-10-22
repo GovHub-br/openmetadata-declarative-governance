@@ -21,6 +21,8 @@ ENTITY_ENDPOINTS = {
     "domain": "domains",
     "persona": "personas",
     "role": "roles",
+    "policy": "policies",
+    "event_subscription": "events/subscriptions",
     "data_product": "dataProducts",
 }
 

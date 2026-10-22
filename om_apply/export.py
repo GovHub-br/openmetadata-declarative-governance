@@ -132,7 +132,9 @@ def export_personas(client: OpenMetadataClient) -> list[dict[str, Any]]:
 
 def export_teams(client: OpenMetadataClient) -> list[dict[str, Any]]:
     exported = []
-    for team in client.list_entities("teams", fields=["owners", "domains"]):
+    for team in client.list_entities(
+        "teams", fields=["owners", "domains", "defaultRoles"]
+    ):
         if team.get("teamType") == "Organization":
             continue
         entry: dict[str, Any] = {"nome": team["name"]}
@@ -147,6 +149,8 @@ def export_teams(client: OpenMetadataClient) -> list[dict[str, Any]]:
             entry["dominios"] = ref_list(team["domains"], "domain")
         if team.get("owners"):
             entry["proprietarios"] = ref_list(team["owners"], "user")
+        if team.get("defaultRoles"):
+            entry["papeis_padrao"] = ref_list(team["defaultRoles"], "role")
         exported.append(entry)
     return sorted(exported, key=lambda e: e["nome"])
 
@@ -155,7 +159,7 @@ def export_users(client: OpenMetadataClient) -> list[dict[str, Any]]:
     exported = []
     users = client.list_entities(
         "users",
-        fields=["teams", "personas", "roles", "domains"],
+        fields=["teams", "personas", "roles", "domains", "defaultPersona"],
         params={"isBot": "false"},
     )
     for user in users:
@@ -170,6 +174,8 @@ def export_users(client: OpenMetadataClient) -> list[dict[str, Any]]:
             entry["times"] = ref_list(teams, "team")
         if user.get("personas"):
             entry["personas"] = ref_list(user["personas"], "persona")
+        if user.get("defaultPersona"):
+            entry["persona_padrao"] = ref_name(user["defaultPersona"])
         if user.get("roles"):
             entry["papeis"] = ref_list(user["roles"], "role")
         if user.get("domains"):

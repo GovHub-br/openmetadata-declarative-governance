@@ -47,6 +47,21 @@ def validate_config_rules(config: dict[str, Any]) -> None:
     )
 
     errors: list[str] = []
+    for policy in get_resource_items(config, ["policies", "politicas"], "policy"):
+        name = get_value(policy, ["name", "nome"], "<sem nome>")
+        rules = as_list(get_value(policy, ["rules", "regras"], None))
+        if not rules:
+            errors.append(f"policy {name}: precisa de ao menos uma regra.")
+        for rule in rules:
+            rule = {str(k).lower(): v for k, v in rule.items()}
+            effect = str(rule.get("efeito") or rule.get("effect") or "").lower()
+            if effect not in {"allow", "deny"}:
+                errors.append(f"policy {name}: efeito deve ser allow ou deny.")
+            if not (rule.get("recursos") or rule.get("resources")):
+                errors.append(f"policy {name}: regra sem recursos.")
+            if not (rule.get("operacoes") or rule.get("operations")):
+                errors.append(f"policy {name}: regra sem operacoes.")
+
     external = {str(name) for name in config.get("dominios_externos") or []}
     for domain in domains:
         name = str(get_value(domain, ["name", "nome"], "<sem nome>"))
@@ -69,6 +84,28 @@ def validate_config_rules(config: dict[str, Any]) -> None:
                     "repositorio (dominios_externos)."
                 )
 
+    # A busca do OpenMetadata so enxerga os dominios diretos e exatos do
+    # usuario: membro de time com dominio que nao os declara no proprio
+    # usuario ve o ativo pela pagina, mas nao o encontra na busca.
+    teams = get_resource_items(config, ["teams", "times", "time"], "team")
+    team_domains = {
+        str(get_value(team, ["name", "nome"])): {
+            str(d) for d in as_list(get_value(team, ["domains", "dominios"], None))
+        }
+        for team in teams
+    }
+    for user in users:
+        name = get_value(user, ["name", "nome"], "<sem nome>")
+        declared = {str(d) for d in as_list(get_value(user, ["domains", "dominios"], None))}
+        for team in as_list(get_value(user, ["teams", "times"], None)):
+            missing = sorted(team_domains.get(str(team), set()) - declared)
+            if missing:
+                errors.append(
+                    f"user {name}: membro de {team} precisa declarar tambem os "
+                    f"dominios do time ({', '.join(missing)}); a busca do "
+                    "OpenMetadata so considera os dominios diretos do usuario."
+                )
+
     for domain in domains:
         if has_value(domain, ["owners", "proprietarios"]):
             name = get_value(domain, ["name", "nome"], "<sem nome>")
@@ -81,9 +118,23 @@ def validate_config_rules(config: dict[str, Any]) -> None:
                 errors.append(error)
 
     for user in users:
-        if has_value(user, ["password", "senha"]):
+        default_persona = get_value(
+            user, ["defaultPersona", "default_persona", "persona_padrao"], None
+        )
+        if default_persona and str(default_persona) not in {
+            str(p) for p in as_list(get_value(user, ["personas"], None))
+        }:
+            errors.append(
+                f"user {get_value(user, ['name', 'nome'], '<sem nome>')}: a persona "
+                f"padrao {default_persona} precisa estar tambem em `personas`."
+            )
+
+    for user in users:
+        password = str(get_value(user, ["password", "senha"], "") or "")
+        # Senha vazia e normal: a variavel so existe no ambiente na hora de
+        # criar o usuario, e depois disso a senha nunca mais e aplicada.
+        if password:
             name = get_value(user, ["name", "nome"], "<sem nome>")
-            password = str(get_value(user, ["password", "senha"]))
             error = validate_password_spec(password, f"user {name}")
             if error:
                 errors.append(error)

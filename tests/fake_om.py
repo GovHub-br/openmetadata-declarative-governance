@@ -16,6 +16,8 @@ TYPES = {
     "users": "user",
     "personas": "persona",
     "roles": "role",
+    "policies": "policy",
+    "events/subscriptions": "eventsubscription",
     "dataProducts": "dataProduct",
 }
 
@@ -67,7 +69,12 @@ class FakeOpenMetadata:
 
     # ── interface de requests.Session ─────────────────────────────────────
     def _route(self, url: str) -> list[str]:
-        return [unquote(part) for part in urlparse(url).path.split("/api/v1/", 1)[1].split("/")]
+        parts = [
+            unquote(part) for part in urlparse(url).path.split("/api/v1/", 1)[1].split("/")
+        ]
+        if parts[:2] == ["events", "subscriptions"]:
+            return ["events/subscriptions", *parts[2:]]
+        return parts
 
     def get(self, url: str, params: dict | None = None, timeout: float = 0) -> Response:
         parts = self._route(url)
@@ -104,17 +111,15 @@ class FakeOpenMetadata:
             entity[op["path"].lstrip("/")] = op["value"]
         return Response(200, copy.deepcopy(entity))
 
-    def put(self, url: str, json: Any = None, timeout: float = 0) -> Response:
-        self.mutations.append(("PUT", "users/changePassword", None))
-        return Response(200, {})
-
     def _as_entity(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Payload de criacao usa nomes/ids; a entidade guarda referencias."""
         entity = dict(payload)
         for field, endpoint in (("domains", "domains"), ("experts", "users")):
             if field in entity:
                 entity[field] = [self.ref(endpoint, name) for name in entity[field]]
-        for field, endpoint in (("teams", "teams"), ("roles", "roles")):
+        if "policies" in entity:
+            entity["policies"] = [self.ref("policies", name) for name in entity["policies"]]
+        for field, endpoint in (("teams", "teams"), ("roles", "roles"), ("defaultRoles", "roles")):
             if field in entity and entity[field] and isinstance(entity[field][0], str):
                 entity[field] = [
                     self.ref(endpoint, self.by_id(endpoint, i)["fullyQualifiedName"])

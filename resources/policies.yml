@@ -1,0 +1,101 @@
+# Policies de acesso.
+#
+# Declare as regras na forma em que o OpenMetadata as grava: ele agrupa
+# qualquer operacao Edit* em `EditAll` e ordena recursos e operacoes. A ordem
+# aqui nao importa (o diff compara ordenado), mas uma lista de Edit* soltos
+# geraria diferenca a cada execucao.
+#
+# Policies embutidas da instancia (OrganizationPolicy, DataConsumerPolicy, as
+# dos bots) e as de outros repositorios (MinCGovernancaNomesPolicy) nao sao
+# declaradas aqui.
+
+policies:
+  # Bot do CI deste repositorio: tudo, mas so nos recursos que o reconciler
+  # gerencia. Nao alcanca ativo de dados.
+  - nome: GovernancaComoCodigoPolicy
+    nome_exibicao: Governança como código
+    descricao: >-
+      Permissões do bot que aplica o repositório
+      GovHub-br/openmetadata-declarative-governance: só os recursos que o
+      reconciler gerencia. Nada de ativo de dados.
+    regras:
+      - nome: GovernancaComoCodigo-Recursos
+        efeito: allow
+        recursos: [dataProduct, domain, eventsubscription, persona, policy, role, team, user]
+        operacoes: [All]
+
+  # Perfil de consumo do MCid: ve so o dominio e sugere mudanca por Task.
+  #
+  # Comportamento conferido na instancia (1.13.3, 22/10/2026):
+  # - `hasDomain()` aceita o dominio herdado do time e casa subdominio: quem
+  #   tem MCid (direto ou pelo time) ve MCid.Habitacao.
+  # - ativo SEM dominio passa em `hasDomain()`, entao fica visivel. E
+  #   intencional no OpenMetadata (igual na 2.0.6); a saida e dar dominio ao
+  #   ativo. No Cidades, o sync de governanca da o dominio do servico a todo
+  #   schema e tabela orfaos.
+  # - na 1.13.3, GET que nao pede `domains` em `fields` carrega a entidade sem
+  #   dominio, e `hasDomain()` deixa passar: a interface bloqueia, a API
+  #   direta nao. Corrigido na 1.13.4+ (open-metadata/OpenMetadata#30691,
+  #   "make read authorization independent of the fields projection").
+  # - criar Task de sugestao nao exige permissao extra.
+  # - LINHAGEM: na 1.13.x as rotas de leitura de linhagem (por entidade e pelo
+  #   indice) nao consultam permissao nenhuma; o perfil ve a linhagem de
+  #   qualquer dominio (nomes e arestas; abrir o no de fora continua 403).
+  #   Nenhuma policy resolve. Corrigido na 2.0.0+ (`pruneLineageByDomain`,
+  #   `LineageDomainFilter`), que poda os nos fora dos dominios do usuario.
+  # - BUSCA (controle de acesso ligado): a traducao de `hasDomain()` para a
+  #   busca usa so os dominios DIRETOS do usuario e compara o id exato, sem
+  #   heranca do time nem subdominio (igual na 1.13.6 e na 2.0.6). Por isso
+  #   todo membro do time declara tambem, no proprio usuario, os dominios do
+  #   time; a validacao recusa quem nao declara.
+  # - o OM guarda o contexto de permissao em cache pelo NOME do usuario, e o
+  #   cache sobrevive a apagar e recriar o usuario: testes com usuario
+  #   temporario precisam de nome novo a cada caso.
+  - nome: MCidLeitorDominioPolicy
+    nome_exibicao: "MCid: leitura do domínio e sugestão"
+    descricao: Vê só os ativos do domínio MCid e sugere mudanças por Task; não edita direto.
+    regras:
+      - nome: MCidLeitor-ForaDoDominio
+        efeito: deny
+        # `All` basta: glossario, tags, times e usuarios nao tem dominio, e
+        # `hasDomain()` deixa passar o que nao tem dominio.
+        recursos: [All]
+        operacoes: [All]
+        condicao: "!hasDomain()"
+
+      # A edicao direta pularia o git e se perderia no proximo sync; a
+      # mudanca chega pela Task de sugestao, que vira PR.
+      - nome: MCidLeitor-SemEdicaoDireta
+        efeito: deny
+        recursos:
+          - apiCollection
+          - apiEndpoint
+          - apiService
+          - chart
+          - classification
+          - container
+          - dashboard
+          - dashboardDataModel
+          - dashboardService
+          - database
+          - databaseSchema
+          - databaseService
+          - dataProduct
+          - domain
+          - glossary
+          - glossaryTerm
+          - messagingService
+          - metric
+          - mlmodel
+          - mlmodelService
+          - pipeline
+          - pipelineService
+          - query
+          - searchIndex
+          - searchService
+          - storageService
+          - storedProcedure
+          - table
+          - tag
+          - topic
+        operacoes: [Delete, EditAll]

@@ -15,10 +15,18 @@ ENV_VAR_PATTERN = re.compile(
 )
 
 RESOURCE_FILES = {
+    "policies": ("policies.yml", "policies.yaml", "politicas.yml", "politicas.yaml"),
+    "roles": ("roles.yml", "roles.yaml", "papeis.yml", "papeis.yaml"),
     "domains": ("domains.yml", "domains.yaml", "dominios.yml", "dominios.yaml"),
     "teams": ("teams.yml", "teams.yaml", "times.yml", "times.yaml"),
     "users": ("users.yml", "users.yaml", "usuarios.yml", "usuarios.yaml"),
     "personas": ("personas.yml", "personas.yaml"),
+    "event_subscriptions": (
+        "event_subscriptions.yml",
+        "event_subscriptions.yaml",
+        "alertas.yml",
+        "alertas.yaml",
+    ),
     "data_products": (
         "data_products.yml",
         "data_products.yaml",
@@ -34,10 +42,13 @@ RESOURCE_FILES = {
 EXTERNAL_DOMAINS_KEY = "dominios_externos"
 
 RESOURCE_KEYS = {
+    "policies": ("policies", "politicas"),
+    "roles": ("roles", "papeis"),
     "domains": ("domains", "dominios"),
     "teams": ("teams", "times", "time"),
     "users": ("users", "usuarios"),
     "personas": ("personas",),
+    "event_subscriptions": ("event_subscriptions", "alertas"),
     "data_products": (
         "data_products",
         "dataproducts",

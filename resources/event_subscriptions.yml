@@ -1,0 +1,24 @@
+# Alertas do OpenMetadata com destino webhook.
+#
+# O segredo do HMAC e o endpoint vem de variavel (secret `OM_RESOURCE_ENV` no
+# CI): o segredo nao pode ser versionado, e o endpoint depende do namespace
+# onde o OpenMetadata roda no cluster. O OpenMetadata nao devolve o segredo na
+# leitura; o destino so e reenviado quando o endpoint muda.
+
+event_subscriptions:
+  # Task de sugestao de descricao vira PR no repositorio dono do ativo
+  # (receptor/). O OM dispara este alerta em todo evento de Task; o receptor
+  # filtra a criacao de sugestao de descricao e ignora o resto.
+  - nome: sugestoes-de-descricao-para-git
+    nome_exibicao: Sugestões de descrição para o Git
+    descricao: >-
+      Envia cada Task de sugestão de descrição ao receptor, que abre um PR no
+      repositório dono do ativo. A Task é fechada com o link do PR quando ele é
+      mergeado ou recusado.
+    tipo_alerta: Notification
+    recursos: [task]
+    tentativas: 3
+    destino:
+      endpoint: "${RECEPTOR_URL}"
+      segredo: "${OM_WEBHOOK_SECRET}"
+      timeout: 10
