@@ -47,8 +47,9 @@ ve so os ativos do dominio MCid (subdominios inclusive) e sugere mudanca por
 Task, sem editar direto. Basta por a pessoa no time; o dominio vem dele.
 
 Limites conferidos na instancia 1.13.3 (detalhes em `resources/policies.yml`):
-ativo sem dominio continua visivel, e o GET da API sem `fields` ainda devolve
-o ativo bloqueado. A interface respeita o bloqueio.
+ativo sem dominio continua visivel (comportamento intencional do
+OpenMetadata), e ate a 1.13.3 o GET da API que nao pede `domains` devolve o
+ativo bloqueado. Este segundo esta corrigido na 1.13.4+.
 
 ## Dominios externos
 

@@ -29,12 +29,14 @@ policies:
   # Comportamento conferido na instancia (1.13.3, 22/10/2026):
   # - `hasDomain()` aceita o dominio herdado do time e casa subdominio: quem
   #   tem MCid (direto ou pelo time) ve MCid.Habitacao.
-  # - ativo SEM dominio passa em `hasDomain()`, entao fica visivel. Nao ha
-  #   condicao para "ativo sem dominio"; a saida e dar dominio ao ativo.
-  # - o bloqueio vale para a interface (GET com `fields` -> 403), mas o GET
-  #   da API sem `fields` ainda devolve o ativo, apesar de a API de permissoes
-  #   dizer deny para ViewBasic. Comportamento do servidor, fora do alcance de
-  #   policy.
+  # - ativo SEM dominio passa em `hasDomain()`, entao fica visivel. E
+  #   intencional no OpenMetadata (igual na 2.0.6); a saida e dar dominio ao
+  #   ativo. No Cidades, o sync de governanca da o dominio do servico a todo
+  #   schema e tabela orfaos.
+  # - na 1.13.3, GET que nao pede `domains` em `fields` carrega a entidade sem
+  #   dominio, e `hasDomain()` deixa passar: a interface bloqueia, a API
+  #   direta nao. Corrigido na 1.13.4+ (open-metadata/OpenMetadata#30691,
+  #   "make read authorization independent of the fields projection").
   # - criar Task de sugestao nao exige permissao extra.
   - nome: MCidLeitorDominioPolicy
     nome_exibicao: "MCid: leitura do domínio e sugestão"
