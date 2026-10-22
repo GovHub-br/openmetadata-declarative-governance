@@ -38,38 +38,23 @@ policies:
   #   direta nao. Corrigido na 1.13.4+ (open-metadata/OpenMetadata#30691,
   #   "make read authorization independent of the fields projection").
   # - criar Task de sugestao nao exige permissao extra.
+  # - BUSCA (controle de acesso ligado): a traducao de `hasDomain()` para a
+  #   busca usa so os dominios DIRETOS do usuario e compara o id exato, sem
+  #   heranca do time nem subdominio (igual na 1.13.6 e na 2.0.6). Por isso
+  #   todo membro do time declara tambem, no proprio usuario, os dominios do
+  #   time; a validacao recusa quem nao declara.
+  # - o OM guarda o contexto de permissao em cache pelo NOME do usuario, e o
+  #   cache sobrevive a apagar e recriar o usuario: testes com usuario
+  #   temporario precisam de nome novo a cada caso.
   - nome: MCidLeitorDominioPolicy
     nome_exibicao: "MCid: leitura do domínio e sugestão"
     descricao: Vê só os ativos do domínio MCid e sugere mudanças por Task; não edita direto.
     regras:
       - nome: MCidLeitor-ForaDoDominio
         efeito: deny
-        recursos:
-          - apiCollection
-          - apiEndpoint
-          - apiService
-          - chart
-          - container
-          - dashboard
-          - dashboardDataModel
-          - dashboardService
-          - database
-          - databaseSchema
-          - databaseService
-          - dataProduct
-          - messagingService
-          - metric
-          - mlmodel
-          - mlmodelService
-          - pipeline
-          - pipelineService
-          - query
-          - searchIndex
-          - searchService
-          - storageService
-          - storedProcedure
-          - table
-          - topic
+        # `All` basta: glossario, tags, times e usuarios nao tem dominio, e
+        # `hasDomain()` deixa passar o que nao tem dominio.
+        recursos: [All]
         operacoes: [All]
         condicao: "!hasDomain()"
 
