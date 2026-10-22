@@ -14,6 +14,14 @@ times:
   - ted
   proprietarios:
   - joaoegewarth
+- nome: mcid-consumidores
+  nome_exibicao: Consumidores de dados do MCID
+  descricao: 'Quem consome os dados do MCid: vê só o domínio e sugere mudanças por Task.'
+  equipe_publica: false
+  dominios:
+  - MCid
+  papeis_padrao:
+  - MCidLeitorDominioRole
 - nome: mcid-data-engineering
   nome_exibicao: Time de Engenharia de Dados do MCID
   descricao: Time responsavel por dados do MCID.

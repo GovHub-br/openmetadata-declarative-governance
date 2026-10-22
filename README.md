@@ -13,9 +13,16 @@ como configuracao versionavel, com comportamento de create/update.
 - `times` / `teams`: times e seus dominios.
 - `users`: usuarios, times, personas e senha inicial/reset.
 - `data_products`: produtos de dados associados a dominios.
+- `policies`: regras de acesso (efeito, recursos, operacoes, condicao).
+- `roles`: conjuntos de policies, dados a time (`papeis_padrao`) ou usuario
+  (`papeis`).
+
+Policies e roles sao declaradas a mao: o `--export` nao as gera, porque a
+instancia tem as embutidas e as de outros repositorios, que nao sao deste.
 
 O fluxo respeita dependencias entre recursos:
 
+1. cria/atualiza policies, depois roles;
 1. cria/atualiza dominios sem owners/experts;
 2. cria/atualiza personas sem owners;
 3. cria/atualiza times sem owners;
@@ -32,6 +39,16 @@ sao criadas pelos endpoints de criacao/create-or-update da API.
 
 O apply nao remove nada: o que existe na instancia e nao esta no YAML fica
 como esta.
+
+## Perfil de consumo por dominio
+
+O time `mcid-consumidores` da a quem entra nele a role `MCidLeitorDominioRole`:
+ve so os ativos do dominio MCid (subdominios inclusive) e sugere mudanca por
+Task, sem editar direto. Basta por a pessoa no time; o dominio vem dele.
+
+Limites conferidos na instancia 1.13.3 (detalhes em `resources/policies.yml`):
+ativo sem dominio continua visivel, e o GET da API sem `fields` ainda devolve
+o ativo bloqueado. A interface respeita o bloqueio.
 
 ## Dominios externos
 
@@ -261,6 +278,10 @@ As chaves podem ser em portugues ou no formato da API:
 - `confirmar_senha` / `confirmPassword`
 - `padrao` / `default`
 - `papeis` / `roles`
+- `papeis_padrao` / `defaultRoles` (time: role herdada por todos os membros)
+- `politicas` / `policies` (role)
+- `regras` / `rules`, e em cada regra `efeito`, `recursos`, `operacoes`,
+  `condicao`
 - `administrador` / `isAdmin` (so `true` e exportado; para revogar, declare
   `false`)
 

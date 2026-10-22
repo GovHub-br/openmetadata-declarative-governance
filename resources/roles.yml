@@ -1,0 +1,19 @@
+# Roles. Cada uma junta policies; quem recebe a role e o time (papeis_padrao,
+# herdado por todos os membros) ou o usuario (papeis).
+#
+# Roles embutidas (DataConsumer, DataSteward, as dos bots) e as de outros
+# repositorios nao sao declaradas aqui.
+
+roles:
+  - nome: GovernancaComoCodigoRole
+    nome_exibicao: Governança como código
+    descricao: Role do bot que aplica o repositório de governança declarativa.
+    politicas:
+      - GovernancaComoCodigoPolicy
+
+  # Dada pelo time mcid-consumidores: basta pôr a pessoa no time.
+  - nome: MCidLeitorDominioRole
+    nome_exibicao: "MCid: leitor do domínio"
+    descricao: Perfil de consumo do domínio MCid.
+    politicas:
+      - MCidLeitorDominioPolicy

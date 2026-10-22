@@ -47,6 +47,21 @@ def validate_config_rules(config: dict[str, Any]) -> None:
     )
 
     errors: list[str] = []
+    for policy in get_resource_items(config, ["policies", "politicas"], "policy"):
+        name = get_value(policy, ["name", "nome"], "<sem nome>")
+        rules = as_list(get_value(policy, ["rules", "regras"], None))
+        if not rules:
+            errors.append(f"policy {name}: precisa de ao menos uma regra.")
+        for rule in rules:
+            rule = {str(k).lower(): v for k, v in rule.items()}
+            effect = str(rule.get("efeito") or rule.get("effect") or "").lower()
+            if effect not in {"allow", "deny"}:
+                errors.append(f"policy {name}: efeito deve ser allow ou deny.")
+            if not (rule.get("recursos") or rule.get("resources")):
+                errors.append(f"policy {name}: regra sem recursos.")
+            if not (rule.get("operacoes") or rule.get("operations")):
+                errors.append(f"policy {name}: regra sem operacoes.")
+
     external = {str(name) for name in config.get("dominios_externos") or []}
     for domain in domains:
         name = str(get_value(domain, ["name", "nome"], "<sem nome>"))
