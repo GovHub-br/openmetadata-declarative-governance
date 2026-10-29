@@ -6,6 +6,25 @@
 #   email: "${USER_FULANO_EMAIL}"
 
 users:
+- nome: andrealmeida
+  nome_exibicao: André Almeida
+  descricao: >-
+    André Almeida, do Ministério da Cultura. Perfil de consumo: vê só o domínio
+    Cultura e sugere mudanças por Task, sem editar direto.
+  email: ${USER_ANDRE_ALMEIDA_EMAIL}
+  senha: ${USER_ANDRE_ALMEIDA_SENHA}
+  times:
+  - minc-consumidores
+  personas:
+  - data-consumer
+  persona_padrao: data-consumer
+  dominios:
+  - Cultura
+  - Cultura.Cadastro Cultural
+  - Cultura.Fomento Direto
+  - Cultura.Incentivo Fiscal
+  - Cultura.Indicadores
+  - Cultura.Repasse Federativo
 - nome: arthuralves1538
   nome_exibicao: Arthur Alves Melo
   administrador: true
@@ -47,6 +66,25 @@ users:
   - pessoas
   - sistema_sisbolsas
   - ted
+- nome: gabrielbizerril
+  nome_exibicao: Gabriel Ribeiro Bizerril
+  descricao: >-
+    Gabriel Ribeiro Bizerril, do Ministério da Cultura. Perfil de consumo: vê só
+    o domínio Cultura e sugere mudanças por Task, sem editar direto.
+  email: ${USER_GABRIEL_BIZERRIL_EMAIL}
+  senha: ${USER_GABRIEL_BIZERRIL_SENHA}
+  times:
+  - minc-consumidores
+  personas:
+  - data-consumer
+  persona_padrao: data-consumer
+  dominios:
+  - Cultura
+  - Cultura.Cadastro Cultural
+  - Cultura.Fomento Direto
+  - Cultura.Incentivo Fiscal
+  - Cultura.Indicadores
+  - Cultura.Repasse Federativo
 - nome: gustavorsdemelo
   nome_exibicao: Gustavo Melo
   descricao: <p>Gustavo Melo, Engenheiro de Dados do projeto GovHub/Cidades.</p>
