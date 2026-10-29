@@ -88,7 +88,7 @@ OpenMetadata, sem Ingress: so o OM o chama, e ele so chama `api.github.com`.
    write*. Guarde o App ID e gere uma chave privada.
 2. **Imagem**: o workflow `Receptor` publica
    `ghcr.io/govhub-br/openmetadata-declarative-governance/receptor` a cada
-   mudanca em `receptor/` na main.
+   mudanca em `receptor/` ou no `Dockerfile` na main (alvo `receptor`).
 3. **Secret e manifests**, no namespace do OpenMetadata:
 
    ```bash
@@ -128,8 +128,8 @@ entidade tem um unico escritor.
 ## Estrutura
 
 ```text
-openmetadata_script/
-  Dockerfile
+openmetadata-declarative-governance/
+  Dockerfile        alvos `apply` (padrao) e `receptor`
   requirements.txt
   requirements-dev.txt
   run.sh
@@ -230,7 +230,7 @@ Validar somente o template, sem chamar a API:
 Build:
 
 ```bash
-docker build -t openmetadata-apply openmetadata_script
+docker build --target apply -t openmetadata-apply .
 ```
 
 Aplicar a pasta modular local:
