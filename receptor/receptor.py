@@ -34,6 +34,9 @@ import requests
 LOG = logging.getLogger("receptor")
 GITHUB_API = "https://api.github.com"
 EVENTO_GITHUB = "om-sugestao-descricao"
+# O OpenMetadata cria UpdateDescription quando o ativo ja tem descricao e
+# RequestDescription quando esta vazia; as duas carregam o texto sugerido.
+TASKS_DE_DESCRICAO = {"UpdateDescription", "RequestDescription"}
 
 
 # ── o que chega do OpenMetadata ─────────────────────────────────────────────
@@ -92,7 +95,7 @@ def sugestao_do_evento(evento: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(thread, dict) or thread.get("type") != "Task":
         return None
     task = thread.get("task") or {}
-    if task.get("type") != "UpdateDescription" or task.get("status", "Open") != "Open":
+    if task.get("type") not in TASKS_DE_DESCRICAO or task.get("status", "Open") != "Open":
         return None
     if not (task.get("suggestion") or "").strip():
         return None
