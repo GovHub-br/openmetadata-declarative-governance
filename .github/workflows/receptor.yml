@@ -3,7 +3,7 @@ name: Receptor
 on:
   push:
     branches: [main]
-    paths: ["receptor/**", ".github/workflows/receptor.yml"]
+    paths: ["receptor/**", "Dockerfile", ".github/workflows/receptor.yml"]
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
-          context: receptor
+          context: .
+          target: receptor
           push: true
           tags: |
             ghcr.io/govhub-br/openmetadata-declarative-governance/receptor:latest

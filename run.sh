@@ -11,7 +11,7 @@ else
   CONTAINER_RESOURCE_PATH="/data/resources.yml"
 fi
 
-docker build -t "$IMAGE_NAME" "$SCRIPT_DIR"
+docker build --target apply -t "$IMAGE_NAME" "$SCRIPT_DIR"
 docker run --rm \
   --env-file "$SCRIPT_DIR/.env" \
   -v "$RESOURCE_PATH:$CONTAINER_RESOURCE_PATH:ro" \
