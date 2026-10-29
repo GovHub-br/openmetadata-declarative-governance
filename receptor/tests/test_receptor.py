@@ -95,6 +95,17 @@ def test_sugestao_de_coluna_leva_o_nome_da_coluna() -> None:
     assert github.disparos[0][1]["coluna"] == "apf"
 
 
+def test_sugestao_em_descricao_vazia_tambem_vira_dispatch() -> None:
+    # coluna sem descricao: o OpenMetadata cria RequestDescription, nao Update
+    github = GitHubDeTeste()
+    corpo = evento(
+        about=f"<#E::table::{TABELA}::columns::apf::description>",
+        tipo_task="RequestDescription",
+    )
+    assert tratar(corpo, github) == (202, "disparado")
+    assert github.disparos[0][1]["coluna"] == "apf"
+
+
 def test_assinatura_errada_ou_ausente_e_recusada() -> None:
     github = GitHubDeTeste()
     corpo = evento()
