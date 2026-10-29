@@ -6,7 +6,7 @@
 #   email: "${USER_FULANO_EMAIL}"
 
 users:
-- nome: andrealmeida
+- nome: andre.almeida
   nome_exibicao: André Almeida
   descricao: >-
     André Almeida, do Ministério da Cultura. Perfil de consumo: vê só o domínio
@@ -66,7 +66,7 @@ users:
   - pessoas
   - sistema_sisbolsas
   - ted
-- nome: gabrielbizerril
+- nome: gabriel.bizerril
   nome_exibicao: Gabriel Ribeiro Bizerril
   descricao: >-
     Gabriel Ribeiro Bizerril, do Ministério da Cultura. Perfil de consumo: vê só
